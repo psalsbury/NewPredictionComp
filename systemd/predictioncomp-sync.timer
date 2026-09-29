@@ -1,0 +1,10 @@
+[Unit]
+Description=Run PredictionComp sync every two minutes
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+AccuracySec=15s
+Persistent=true
+RandomizedDelaySec=5
+[Install]
+WantedBy=timers.target

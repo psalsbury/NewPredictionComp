@@ -1,0 +1,9 @@
+*.sqlite
+*.sqlite-*
+*.db
+*.bak*
+__pycache__/
+*.pyc
+.env
+*.env
+google-oauth.json

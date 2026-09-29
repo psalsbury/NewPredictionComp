@@ -1,0 +1,14 @@
+[Unit]
+Description=PredictionComp fixture result and scoring sync
+After=network-online.target
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+EnvironmentFile=/etc/predictioncomp/quiz-agent.env
+ExecStart=/usr/bin/python3 /opt/predictioncomp/bin/sync_competition.py
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/predictioncomp
+PrivateTmp=true
+NoNewPrivileges=true

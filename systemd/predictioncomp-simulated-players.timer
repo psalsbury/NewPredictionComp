@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh PredictionComp simulated predictions every six hours
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=6h
+AccuracySec=5min
+Persistent=true
+RandomizedDelaySec=120
+[Install]
+WantedBy=timers.target

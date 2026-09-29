@@ -1,3 +1,15 @@
+<Files "admin.php">
+AuthType Basic
+AuthName "PredictionComp Owner Statistics"
+AuthUserFile /etc/apache2/clubdailyfive-owner.htpasswd
+Require valid-user
+</Files>
+
+RewriteEngine On
+RewriteRule ^(about|privacy|contact|how-it-works)/?$ info.php?page=$1 [L,QSA]
+RewriteCond %{HTTP_HOST} ^www\.predictioncomp\.com$ [NC]
+RewriteRule ^ https://predictioncomp.com%{REQUEST_URI} [R=301,L]
+
 DirectoryIndex index.php
 Options -Indexes
 <FilesMatch "\.(sqlite|db|sql|bak)$">
