@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Sync Premier League fixtures and scores; use published round when API plan blocks 2026/27."""
-import os, sqlite3, urllib.request, urllib.parse, json, csv, io, hashlib
+import os, sqlite3, urllib.request, urllib.parse, json, csv, io, hashlib, re, html
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -30,6 +30,53 @@ def api(params):
  with urllib.request.urlopen(urllib.request.Request(u,headers={'x-apisports-key':KEY}),timeout=30) as r: data=json.load(r)
  if data.get('errors'): raise RuntimeError('API-Football: '+str(data['errors']))
  return data.get('response',[])
+
+PUBLISHED_URL='https://www.premierleague.com/en/news/4675097/all-380-fixtures-for-202627-premier-league-season'
+ALIASES.update({'Man Utd':'Manchester United','Spurs':'Tottenham Hotspur'})
+def published_fixtures(season):
+ if season!=2026: raise RuntimeError('Published source is configured for 2026/27 only')
+ request=urllib.request.Request(PUBLISHED_URL,headers={'User-Agent':'PredictionComp fixture sync'})
+ with urllib.request.urlopen(request,timeout=30) as response: page=response.read().decode('utf-8')
+ fixtures={}
+ for paragraph in re.findall(r'<p\b[^>]*>(.*?)</p>',page,re.S|re.I):
+  lines=[html.unescape(re.sub(r'<[^>]+>','',line)).strip() for line in re.split(r'<br\s*/?>',paragraph,flags=re.I)]
+  if not lines: continue
+  date_match=re.fullmatch(r'(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) (\d{1,2}) ([A-Za-z]+)(?: (\d{4}))?',lines[0])
+  if not date_match: continue
+  weekday,day,month,year=date_match.groups()
+  month_number=datetime.strptime(month,'%B').month
+  year=int(year) if year else (season if month_number>=7 else season+1)
+  for line in lines[1:]:
+   line=re.sub(r'\s*\([^)]*\).*$', '',line).rstrip('*').strip()
+   match=re.fullmatch(r'(?:(\d{1,2}:\d{2})\s+(?:GMT\s+)?)?(.+?)\s+v\s+(.+)',line)
+   if not match: continue
+   clock,home,away=match.groups();home=canonical(home.strip());away=canonical(away.strip())
+   clock=clock or ('15:00' if weekday in ('Saturday','Sunday') else '20:00')
+   local=datetime.strptime(f'{year}-{month_number:02d}-{int(day):02d} {clock}','%Y-%m-%d %H:%M').replace(tzinfo=ZoneInfo('Europe/London'))
+   fixtures[(home,away)]=local.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+ # Repeated pairings in the article can reflect later TV changes: last listing wins.
+ teams={team for pair in fixtures for team in pair}
+ if len(teams)!=20 or len(fixtures)!=380 or any((h,a) not in fixtures for h in teams for a in teams if h!=a):
+  raise RuntimeError(f'Published fixture validation failed: {len(fixtures)} pairings, {len(teams)} teams')
+ return fixtures
+def refresh_published(c,season):
+ fixtures=published_fixtures(season)
+ now=datetime.now(timezone.utc);added=updated=0
+ for (home,away),kick in fixtures.items():
+  if datetime.fromisoformat(kick.replace('Z','+00:00'))<=now: continue
+  rows=[(fid,external,status) for fid,h,a,external,status in c.execute("SELECT id,home,away,external_id,status FROM fixtures WHERE kickoff_utc>=? AND kickoff_utc<?",(f'{season}-07-01',f'{season+1}-07-01')) if canonical(h)==home and canonical(a)==away]
+  if len(rows)>1: raise RuntimeError(f'Ambiguous existing pairing: {home} v {away}')
+  if rows:
+   fid,external,status=rows[0]
+   if status in FINAL or (external is not None and external<900000000): continue
+   c.execute("UPDATE fixtures SET kickoff_utc=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND kickoff_utc<>?",(kick,fid,kick))
+   updated+=c.execute('SELECT changes()').fetchone()[0]
+  else:
+   external=900000000+int(hashlib.sha256(f'PL{season}:{home}:{away}'.encode()).hexdigest()[:12],16)
+   c.execute("INSERT INTO fixtures(external_id,round,kickoff_utc,home,away,status) VALUES(?,?,?,?,?,'NS')",(external,f'Premier League {season}/{str(season+1)[2:]}',kick,home,away))
+   added+=1
+ return added,updated
+
 def matching(c,home,away,date):
  for fid,h,a in c.execute("SELECT id,home,away FROM fixtures WHERE substr(kickoff_utc,1,10)=?",(date,)):
   if canonical(h)==canonical(home) and canonical(a)==canonical(away): return fid
@@ -113,6 +160,15 @@ if night_due:
   print('season_fixtures_refreshed',len(season_items),'season',season)
  except (RuntimeError,OSError,ValueError) as exc:
   print('season_refresh_unavailable',str(exc)[:200])
+  try:
+   c.execute('SAVEPOINT published_refresh')
+   added,changed=refresh_published(c,season)
+   c.execute('RELEASE published_refresh')
+   c.execute("INSERT INTO sync_meta(key,value) VALUES('published_refresh_success',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(datetime.now(timezone.utc).isoformat(),))
+   print('published_season_added',added,'updated',changed)
+  except (RuntimeError,OSError,ValueError,sqlite3.Error) as fallback_exc:
+   c.execute('ROLLBACK TO published_refresh');c.execute('RELEASE published_refresh')
+   print('published_refresh_unavailable',str(fallback_exc)[:200])
 if hourly:
  try:
   c.execute("INSERT INTO sync_meta(key,value) VALUES('upcoming_sync',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(datetime.now(timezone.utc).isoformat(),))
