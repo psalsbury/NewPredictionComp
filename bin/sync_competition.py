@@ -84,7 +84,7 @@ def matching(c,home,away,date):
  return None
 def save(c,x,full=True):
  f=x['fixture'];t=x['teams'];g=x.get('goals') or {};status=f['status']['short']
- home,away=t['home']['name'],t['away']['name']
+ home,away=canonical(t['home']['name']),canonical(t['away']['name'])
  existing=None
  linked=c.execute('SELECT id FROM fixtures WHERE external_id=?',(f['id'],)).fetchone()
  if linked: existing=linked[0]
