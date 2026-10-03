@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Sync Premier League fixtures and scores; use published round when API plan blocks 2026/27."""
-import os, sqlite3, urllib.request, urllib.parse, json, csv, io, hashlib, re, html
+import os, sqlite3, urllib.request, urllib.parse, json, csv, io, hashlib, re, html, subprocess, contextlib, traceback
+from email.message import EmailMessage
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -135,61 +136,108 @@ def score(c):
    outcome=lambda x,y:(x>y)-(x<y)
    pts=5 if (ph==h and pa==a) else (3 if outcome(ph,pa)==outcome(h,a) else 0)
    c.execute('UPDATE predictions SET points=? WHERE id=?',(pts,pid))
-c=sqlite3.connect(DB)
-c.execute("CREATE TABLE IF NOT EXISTS sync_meta(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated_at TEXT DEFAULT CURRENT_TIMESTAMP)")
-last=c.execute("SELECT value FROM sync_meta WHERE key='upcoming_sync'").fetchone()
-hourly=True
-if last:
- try: hourly=(datetime.now(timezone.utc)-datetime.fromisoformat(last[0])).total_seconds()>=3300
- except ValueError: pass
-up=polled=seeded=results=0
-uk_now=datetime.now(ZoneInfo('Europe/London'))
-season=uk_now.year if uk_now.month>=7 else uk_now.year-1
-night_key=f'season_refresh_attempt:{season}'
-last_night=c.execute('SELECT value FROM sync_meta WHERE key=?',(night_key,)).fetchone()
-night_due=uk_now.hour>=2 and (not last_night or last_night[0]!=uk_now.date().isoformat())
-if night_due:
- # Record attempts too, so an unavailable subscription does not retry every two minutes.
- c.execute("INSERT INTO sync_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(night_key,uk_now.date().isoformat()))
- c.commit()
- try:
-  season_items=api({'league':39,'season':season})
-  if not season_items: raise RuntimeError('Season source returned no fixtures')
-  for item in season_items: save(c,item,True)
-  c.execute("INSERT INTO sync_meta(key,value) VALUES('season_refresh_success',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(datetime.now(timezone.utc).isoformat(),))
-  print('season_fixtures_refreshed',len(season_items),'season',season)
- except (RuntimeError,OSError,ValueError) as exc:
-  print('season_refresh_unavailable',str(exc)[:200])
-  try:
-   c.execute('SAVEPOINT published_refresh')
-   added,changed=refresh_published(c,season)
-   c.execute('RELEASE published_refresh')
-   c.execute("INSERT INTO sync_meta(key,value) VALUES('published_refresh_success',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(datetime.now(timezone.utc).isoformat(),))
-   print('published_season_added',added,'updated',changed)
-  except (RuntimeError,OSError,ValueError,sqlite3.Error) as fallback_exc:
-   c.execute('ROLLBACK TO published_refresh');c.execute('RELEASE published_refresh')
-   print('published_refresh_unavailable',str(fallback_exc)[:200])
-if hourly:
- try:
-  c.execute("INSERT INTO sync_meta(key,value) VALUES('upcoming_sync',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(datetime.now(timezone.utc).isoformat(),))
+def run_sync():
+ c=sqlite3.connect(DB)
+ c.execute("CREATE TABLE IF NOT EXISTS sync_meta(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated_at TEXT DEFAULT CURRENT_TIMESTAMP)")
+ last=c.execute("SELECT value FROM sync_meta WHERE key='upcoming_sync'").fetchone()
+ hourly=True
+ if last:
+  try: hourly=(datetime.now(timezone.utc)-datetime.fromisoformat(last[0])).total_seconds()>=3300
+  except ValueError: pass
+ up=polled=seeded=results=0
+ uk_now=datetime.now(ZoneInfo('Europe/London'))
+ season=uk_now.year if uk_now.month>=7 else uk_now.year-1
+ night_key=f'season_refresh_attempt:{season}'
+ last_night=c.execute('SELECT value FROM sync_meta WHERE key=?',(night_key,)).fetchone()
+ night_due=uk_now.hour>=2 and (not last_night or last_night[0]!=uk_now.date().isoformat())
+ if night_due:
+  # Record attempts too, so an unavailable subscription does not retry every two minutes.
+  c.execute("INSERT INTO sync_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(night_key,uk_now.date().isoformat()))
   c.commit()
-  upcoming=api({'league':39,'season':season,'next':20})
-  for item in upcoming: save(c,item,True)
-  up=len(upcoming)
-  c.execute("""INSERT INTO sync_meta(key,value) VALUES('upcoming_sync',?)
-   ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP""",(datetime.now(timezone.utc).isoformat(),))
- except (RuntimeError, OSError, ValueError) as exc: print('upcoming_api_unavailable',str(exc)[:200])
-seeded=seed_round(c)
-marks=','.join('?' for _ in TERMINAL)
-sql=f"""SELECT external_id FROM fixtures WHERE external_id IS NOT NULL
- AND kickoff_utc<=datetime('now','-105 minutes') AND kickoff_utc>=datetime('now','-24 hours')
- AND COALESCE(status,'NS') NOT IN ({marks})"""
-ids=[str(r[0]) for r in c.execute(sql,tuple(TERMINAL)).fetchall() if r[0]<900000000]
-if ids:
+  try:
+   season_items=api({'league':39,'season':season})
+   if not season_items: raise RuntimeError('Season source returned no fixtures')
+   for item in season_items: save(c,item,True)
+   c.execute("INSERT INTO sync_meta(key,value) VALUES('season_refresh_success',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(datetime.now(timezone.utc).isoformat(),))
+   print('season_fixtures_refreshed',len(season_items),'season',season)
+  except (RuntimeError,OSError,ValueError) as exc:
+   print('season_refresh_unavailable',str(exc)[:200])
+   try:
+    c.execute('SAVEPOINT published_refresh')
+    added,changed=refresh_published(c,season)
+    c.execute('RELEASE published_refresh')
+    c.execute("INSERT INTO sync_meta(key,value) VALUES('published_refresh_success',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(datetime.now(timezone.utc).isoformat(),))
+    print('published_season_added',added,'updated',changed)
+   except (RuntimeError,OSError,ValueError,sqlite3.Error) as fallback_exc:
+    c.execute('ROLLBACK TO published_refresh');c.execute('RELEASE published_refresh')
+    print('published_refresh_unavailable',str(fallback_exc)[:200])
+ if hourly:
+  try:
+   c.execute("INSERT INTO sync_meta(key,value) VALUES('upcoming_sync',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(datetime.now(timezone.utc).isoformat(),))
+   c.commit()
+   upcoming=api({'league':39,'season':season,'next':20})
+   for item in upcoming: save(c,item,True)
+   up=len(upcoming)
+   c.execute("""INSERT INTO sync_meta(key,value) VALUES('upcoming_sync',?)
+    ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP""",(datetime.now(timezone.utc).isoformat(),))
+  except (RuntimeError, OSError, ValueError) as exc: print('upcoming_api_unavailable',str(exc)[:200])
+ seeded=seed_round(c)
+ marks=','.join('?' for _ in TERMINAL)
+ sql=f"""SELECT external_id FROM fixtures WHERE external_id IS NOT NULL
+  AND kickoff_utc<=datetime('now','-105 minutes') AND kickoff_utc>=datetime('now','-24 hours')
+  AND COALESCE(status,'NS') NOT IN ({marks})"""
+ ids=[str(r[0]) for r in c.execute(sql,tuple(TERMINAL)).fetchall() if r[0]<900000000]
+ if ids:
+  try:
+   for item in api({'ids':'-'.join(ids)}): save(c,item,False);polled+=1
+  except (RuntimeError,OSError,ValueError) as exc: print('results_api_unavailable',str(exc)[:200])
+ try: results=fallback_results(c)
+ except (OSError,ValueError) as exc: print('results_fallback_unavailable',str(exc)[:200])
+ score(c);c.commit()
+ print('upcoming_refreshed',up,'official_round_seeded',seeded,'results_polled',polled,'csv_results_updated',results)
+
+def report_snapshot():
+ with sqlite3.connect(DB) as db:
+  return ({r[0]:r[1:] for r in db.execute('SELECT id,home,away,kickoff_utc,status,home_score,away_score FROM fixtures')},dict(db.execute('SELECT id,points FROM predictions')))
+def daily_report(before,after,log,error=None):
+ old,old_points=before;new,new_points=after
+ added=set(new)-set(old);changed={fid for fid in set(new)&set(old) if new[fid]!=old[fid]}
+ lines=['PredictionComp daily fixture job',datetime.now(ZoneInfo('Europe/London')).strftime('%d %b %Y %H:%M UK'),'',
+ 'Outcome: '+('FAILED' if error else ('Completed with source warnings' if 'unavailable' in log else 'Completed')),
+ f'Fixtures added: {len(added)}',f'Existing fixtures changed: {len(changed)}',
+ f'Prediction point values changed: {sum(old_points.get(pid)!=value for pid,value in new_points.items())}',
+ f'Total fixtures in database: {len(new)}']
+ if added or changed:
+  lines+=['','Fixture changes (UK time):']
+  for fid in sorted(added|changed):
+   row=new[fid];dt=datetime.fromisoformat(row[2].replace('Z','+00:00')).replace(tzinfo=timezone.utc).astimezone(ZoneInfo('Europe/London'))
+   lines.append(f'{"Added" if fid in added else "Updated"}: {row[0]} v {row[1]} — {dt:%d %b %Y %H:%M}; status {row[3]}')
+ lines+=['','Source/run details:',log.strip() or 'No output.']
+ if error: lines+=['','Failure details:',error]
+ lines+=['','https://predictioncomp.com/']
+ message=EmailMessage()
+ message['From']='PredictionComp <admin@clubdailyfive.com>'
+ message['To']='pete@salsbury.co.uk'
+ message['Subject']='PredictionComp daily fixtures — '+('FAILED — ' if error else '')+datetime.now(ZoneInfo('Europe/London')).strftime('%d %b %Y')
+ message.set_content(chr(10).join(lines))
+ subprocess.run(['/usr/sbin/sendmail','-t','-oi'],input=message.as_bytes(),check=True,timeout=30)
+ print('daily_report_queued pete@salsbury.co.uk')
+if __name__=='__main__':
+ now=datetime.now(ZoneInfo('Europe/London'));season=now.year if now.month>=7 else now.year-1
+ with sqlite3.connect(DB) as db:
+  db.execute("CREATE TABLE IF NOT EXISTS sync_meta(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated_at TEXT DEFAULT CURRENT_TIMESTAMP)")
+  last=db.execute('SELECT value FROM sync_meta WHERE key=?',(f'season_refresh_attempt:{season}',)).fetchone()
+ report_due=now.hour>=2 and (not last or last[0]!=now.date().isoformat())
+ report_due=report_due or os.environ.get('PREDICTIONCOMP_REPORT_NOW')=='1'
+ before=report_snapshot() if report_due else None
+ output=io.StringIO();error=None
  try:
-  for item in api({'ids':'-'.join(ids)}): save(c,item,False);polled+=1
- except (RuntimeError,OSError,ValueError) as exc: print('results_api_unavailable',str(exc)[:200])
-try: results=fallback_results(c)
-except (OSError,ValueError) as exc: print('results_fallback_unavailable',str(exc)[:200])
-score(c);c.commit()
-print('upcoming_refreshed',up,'official_round_seeded',seeded,'results_polled',polled,'csv_results_updated',results)
+  with contextlib.redirect_stdout(output): run_sync()
+ except Exception:
+  error=traceback.format_exc()
+ finally:
+  print(output.getvalue(),end='')
+  if report_due:
+   try: daily_report(before,report_snapshot(),output.getvalue(),error)
+   except Exception as mail_error: print('daily_report_failed',str(mail_error))
+ if error: raise RuntimeError(error)
