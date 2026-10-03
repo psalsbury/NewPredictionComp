@@ -238,6 +238,10 @@ if __name__=='__main__':
  finally:
   print(output.getvalue(),end='')
   if report_due:
-   try: daily_report(before,report_snapshot(),output.getvalue(),error)
+   after=report_snapshot();old,old_points=before;new,new_points=after
+   summary={'finished_at':datetime.now(timezone.utc).isoformat(),'status':'Failed' if error else ('Completed with source warnings' if 'unavailable' in output.getvalue() else 'Completed'),'added':len(set(new)-set(old)),'changed':sum(new[fid]!=old[fid] for fid in set(new)&set(old)),'points_changed':sum(old_points.get(pid)!=value for pid,value in new_points.items()),'total_fixtures':len(new),'details':output.getvalue(),'error':error}
+   with sqlite3.connect(DB) as report_db:
+    report_db.execute("INSERT INTO sync_meta(key,value) VALUES('last_daily_job',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(json.dumps(summary),))
+   try: daily_report(before,after,output.getvalue(),error)
    except Exception as mail_error: print('daily_report_failed',str(mail_error))
  if error: raise RuntimeError(error)
