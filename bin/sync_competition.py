@@ -37,7 +37,15 @@ def matching(c,home,away,date):
 def save(c,x,full=True):
  f=x['fixture'];t=x['teams'];g=x.get('goals') or {};status=f['status']['short']
  home,away=t['home']['name'],t['away']['name']
- existing=matching(c,home,away,f['date'][:10])
+ existing=None
+ linked=c.execute('SELECT id FROM fixtures WHERE external_id=?',(f['id'],)).fetchone()
+ if linked: existing=linked[0]
+ else:
+  # A Premier League season has one home/away pairing: retain seeded IDs after a date change.
+  season=int(x['league'].get('season') or f['date'][:4])
+  candidates=[fid for fid,h,a in c.execute("SELECT id,home,away FROM fixtures WHERE external_id>=900000000 AND kickoff_utc>=? AND kickoff_utc<?",(f'{season}-07-01',f'{season+1}-07-01')) if canonical(h)==canonical(home) and canonical(a)==canonical(away)]
+  if len(candidates)==1: existing=candidates[0]
+  if existing is None: existing=matching(c,home,away,f['date'][:10])
  if existing and not c.execute('SELECT 1 FROM fixtures WHERE external_id=?',(f['id'],)).fetchone():
   c.execute('UPDATE fixtures SET external_id=? WHERE id=?',(f['id'],existing))
  if full:
@@ -53,7 +61,8 @@ def seed_round(c):
  count=0
  for day,clock,home,away in NEXT_ROUND:
   dt=datetime.strptime(day+' '+clock,'%Y-%m-%d %H:%M').replace(tzinfo=ZoneInfo('Europe/London')).astimezone(timezone.utc)
-  if dt<=datetime.now(timezone.utc) or matching(c,home,away,day): continue
+  season_pair=any(canonical(h)==home and canonical(a)==away for h,a in c.execute("SELECT home,away FROM fixtures WHERE kickoff_utc>=? AND kickoff_utc<?",('2026-07-01','2027-07-01')))
+  if dt<=datetime.now(timezone.utc) or season_pair: continue
   external=900000000+int(hashlib.sha256(f'PL2627:{day}:{home}:{away}'.encode()).hexdigest()[:10],16)%90000000
   c.execute("""INSERT OR IGNORE INTO fixtures(external_id,round,kickoff_utc,home,away,status)
    VALUES(?,?,?,?,?,'NS')""",(external,'Premier League 2026/27 · Round 6',dt.strftime('%Y-%m-%dT%H:%M:%SZ'),home,away))
@@ -87,9 +96,28 @@ if last:
  try: hourly=(datetime.now(timezone.utc)-datetime.fromisoformat(last[0])).total_seconds()>=3300
  except ValueError: pass
 up=polled=seeded=results=0
+uk_now=datetime.now(ZoneInfo('Europe/London'))
+season=uk_now.year if uk_now.month>=7 else uk_now.year-1
+night_key=f'season_refresh_attempt:{season}'
+last_night=c.execute('SELECT value FROM sync_meta WHERE key=?',(night_key,)).fetchone()
+night_due=uk_now.hour>=2 and (not last_night or last_night[0]!=uk_now.date().isoformat())
+if night_due:
+ # Record attempts too, so an unavailable subscription does not retry every two minutes.
+ c.execute("INSERT INTO sync_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(night_key,uk_now.date().isoformat()))
+ c.commit()
+ try:
+  season_items=api({'league':39,'season':season})
+  if not season_items: raise RuntimeError('Season source returned no fixtures')
+  for item in season_items: save(c,item,True)
+  c.execute("INSERT INTO sync_meta(key,value) VALUES('season_refresh_success',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(datetime.now(timezone.utc).isoformat(),))
+  print('season_fixtures_refreshed',len(season_items),'season',season)
+ except (RuntimeError,OSError,ValueError) as exc:
+  print('season_refresh_unavailable',str(exc)[:200])
 if hourly:
  try:
-  upcoming=api({'league':39,'season':2026,'next':20})
+  c.execute("INSERT INTO sync_meta(key,value) VALUES('upcoming_sync',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(datetime.now(timezone.utc).isoformat(),))
+  c.commit()
+  upcoming=api({'league':39,'season':season,'next':20})
   for item in upcoming: save(c,item,True)
   up=len(upcoming)
   c.execute("""INSERT INTO sync_meta(key,value) VALUES('upcoming_sync',?)
