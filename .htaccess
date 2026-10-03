@@ -6,6 +6,11 @@ Require valid-user
 </Files>
 
 RewriteEngine On
+RewriteRule ^sitemap\.xml$ sitemap.php [L]
+RewriteRule ^clubs/?$ public.php?kind=clubs [L,QSA]
+RewriteRule ^clubs/([a-z0-9-]+)/?$ public.php?kind=club&slug=$1 [L,QSA]
+RewriteRule ^fixtures/?$ public.php?kind=fixtures [L,QSA]
+RewriteRule ^fixtures/([0-9]+)/?$ public.php?kind=match&id=$1 [L,QSA]
 RewriteRule ^(about|privacy|contact|how-it-works)/?$ info.php?page=$1 [L,QSA]
 RewriteCond %{HTTP_HOST} ^www\.predictioncomp\.com$ [NC]
 RewriteRule ^ https://predictioncomp.com%{REQUEST_URI} [R=301,L]
