@@ -31,6 +31,19 @@ $totals=[
  'leagues'=>scalar($db,"SELECT COUNT(*) FROM leagues")
 ];
 $recent=$db->query("SELECT display_name,email,supported_club,first_played_at,play_alert_sent_at FROM users WHERE COALESCE(is_bot,0)=0 AND first_played_at IS NOT NULL ORDER BY first_played_at DESC LIMIT 50")->fetchAll(PDO::FETCH_ASSOC);
+$fixtureTotal=scalar($db,'SELECT COUNT(*) FROM fixtures');
+$fixtureUpcoming=scalar($db,"SELECT COUNT(*) FROM fixtures WHERE julianday(kickoff_utc)>julianday('now')");
+$jobRaw=$db->query("SELECT value FROM sync_meta WHERE key='last_daily_job'")->fetchColumn();$lastJob=$jobRaw?json_decode((string)$jobRaw,true):null;
+$nextKick=$db->query("SELECT kickoff_utc FROM fixtures WHERE julianday(kickoff_utc)>julianday('now') AND COALESCE(status,'NS') NOT IN ('CANC','PST','ABD') ORDER BY julianday(kickoff_utc) LIMIT 1")->fetchColumn();
+$coverage=[];$nextFixtures=[];$roundCount=0;
+if($nextKick){
+ $roundStart=(new DateTimeImmutable((string)$nextKick,$utc))->setTimezone($tz)->setTime(0,0);
+ $roundStart=$roundStart->modify('-'.(((int)$roundStart->format('w')+2)%7).' days');$roundEnd=$roundStart->modify('+7 days');
+ $stmt=$db->prepare("SELECT id,home,away,kickoff_utc FROM fixtures WHERE julianday(kickoff_utc)>=julianday(?) AND julianday(kickoff_utc)<julianday(?) AND COALESCE(status,'NS') NOT IN ('CANC','PST','ABD') ORDER BY julianday(kickoff_utc)");
+ $stmt->execute([$roundStart->setTimezone($utc)->format(DateTimeInterface::ATOM),$roundEnd->setTimezone($utc)->format(DateTimeInterface::ATOM)]);$nextFixtures=$stmt->fetchAll(PDO::FETCH_ASSOC);$roundCount=count($nextFixtures);
+ $ids=implode(',',array_map('intval',array_column($nextFixtures,'id')));
+ $coverage=$db->query("SELECT is_bot,COUNT(*) players,SUM(picks=$roundCount) complete,SUM(picks) predictions FROM (SELECT u.id,u.is_bot,COUNT(DISTINCT p.fixture_id) picks FROM users u JOIN predictions p ON p.user_id=u.id WHERE p.fixture_id IN ($ids) GROUP BY u.id) GROUP BY is_bot")->fetchAll(PDO::FETCH_ASSOC);
+}
 ?>
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>PredictionComp Admin</title>
 <style>
@@ -48,6 +61,9 @@ $recent=$db->query("SELECT display_name,email,supported_club,first_played_at,pla
 <section class="total"><small>Friends leagues</small><strong><?=number_format($totals['leagues'])?></strong></section>
 <section class="total"><small>SIM players</small><strong><?=number_format($totals['bots'])?></strong></section>
 </div>
+<h2>Fixtures &amp; daily job</h2><div class="cards"><section class="total"><small>Fixtures in database</small><strong><?=number_format($fixtureTotal)?></strong></section><section class="total"><small>Upcoming fixtures</small><strong><?=number_format($fixtureUpcoming)?></strong></section><section class="total"><small>Next round fixtures</small><strong><?=$roundCount?></strong></section></div>
+<section class="card"><h3>Last daily job</h3><?php if($lastJob):?><p><?=h((new DateTimeImmutable($lastJob['finished_at']))->setTimezone($tz)->format('d M Y H:i'))?> UK · <?=h($lastJob['status'])?></p><p><?=h($lastJob['added'])?> fixtures added · <?=h($lastJob['changed'])?> fixtures changed · <?=h($lastJob['points_changed'])?> prediction points updated</p><details><summary>Run details</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px"><?=h($lastJob['details'])?><?=h($lastJob['error']??'')?></pre></details><?php else:?><p>No daily job report recorded yet.</p><?php endif;?></section>
+<h2>Next round prediction coverage</h2><?php if($nextFixtures):?><p><?=h((new DateTimeImmutable($nextFixtures[0]['kickoff_utc'],$utc))->setTimezone($tz)->format('d M'))?>–<?=h((new DateTimeImmutable($nextFixtures[count($nextFixtures)-1]['kickoff_utc'],$utc))->setTimezone($tz)->format('d M Y'))?> · <?=$roundCount?> fixtures. Grouped Friday–Thursday when round numbers are unavailable.</p><div class="tablewrap"><table><thead><tr><th>Players</th><th>At least one prediction</th><th>All <?=$roundCount?> fixtures predicted</th><th>Predictions saved</th></tr></thead><tbody><?php foreach([0=>'Real players',1=>'Bots'] as $kind=>$label):$row=['players'=>0,'complete'=>0,'predictions'=>0];foreach($coverage as $entry)if((int)$entry['is_bot']===$kind)$row=$entry;?><tr><td><?=h($label)?></td><td><?=h($row['players'])?></td><td><?=h($row['complete'])?></td><td><?=h($row['predictions'])?></td></tr><?php endforeach;?></tbody></table></div><?php else:?><p>No upcoming fixtures.</p><?php endif;?>
 <h2>Recent first-time players</h2><div class="tablewrap"><table><thead><tr><th>Display name</th><th>Account</th><th>Club</th><th>First played</th><th>Email alert</th></tr></thead><tbody>
 <?php if(!$recent):?><tr><td colspan="5">No real players have saved a prediction yet.</td></tr><?php endif;?>
 <?php foreach($recent as $r):?><tr><td><?=h($r['display_name'])?></td><td><?=h($r['email']?:'Guest')?></td><td><?=h($r['supported_club']?:'—')?></td><td><?=h((new DateTimeImmutable($r['first_played_at'],new DateTimeZone('UTC')))->setTimezone($tz)->format('d M Y H:i'))?></td><td class="<?=empty($r['play_alert_sent_at'])?'pending':'ok'?>"><?=empty($r['play_alert_sent_at'])?'Pending retry':'Sent'?></td></tr><?php endforeach;?>
