@@ -22,7 +22,7 @@ RewriteRule ^clubs/?$ public.php?kind=clubs [L,QSA]
 RewriteRule ^clubs/([a-z0-9-]+)/?$ public.php?kind=club&slug=$1 [L,QSA]
 RewriteRule ^fixtures/?$ public.php?kind=fixtures [L,QSA]
 RewriteRule ^fixtures/([0-9]+)/?$ public.php?kind=match&id=$1 [L,QSA]
-RewriteRule ^(about|privacy|contact|how-it-works|install)/?$ info.php?page=$1 [L,QSA]
+RewriteRule ^(about|privacy|contact|how-it-works|install|beat-the-bots)/?$ info.php?page=$1 [L,QSA]
 
 DirectoryIndex index.php
 Options -Indexes
