@@ -6,6 +6,11 @@ Require valid-user
 </Files>
 
 RewriteEngine On
+# One URL per page: send www and trailing-slash variants to the canonical address.
+RewriteCond %{HTTP_HOST} ^www\.predictioncomp\.com$ [NC]
+RewriteRule ^ https://predictioncomp.com%{REQUEST_URI} [R=301,L]
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.+)/$ https://predictioncomp.com/$1 [R=301,L]
 RewriteRule ^my-results/?$ player-page.php?screen=results [L]
 RewriteRule ^leagues/?$ player-page.php?screen=leagues [L]
 RewriteRule ^account/?$ player-page.php?screen=account [L]
@@ -18,8 +23,6 @@ RewriteRule ^clubs/([a-z0-9-]+)/?$ public.php?kind=club&slug=$1 [L,QSA]
 RewriteRule ^fixtures/?$ public.php?kind=fixtures [L,QSA]
 RewriteRule ^fixtures/([0-9]+)/?$ public.php?kind=match&id=$1 [L,QSA]
 RewriteRule ^(about|privacy|contact|how-it-works|install)/?$ info.php?page=$1 [L,QSA]
-RewriteCond %{HTTP_HOST} ^www\.predictioncomp\.com$ [NC]
-RewriteRule ^ https://predictioncomp.com%{REQUEST_URI} [R=301,L]
 
 DirectoryIndex index.php
 Options -Indexes
@@ -30,6 +33,8 @@ Options -Indexes
   Header always set X-Content-Type-Options "nosniff"
   Header always set Referrer-Policy "strict-origin-when-cross-origin"
   Header always set Permissions-Policy "geolocation=(), camera=(), microphone=()"
+  # No includeSubDomains: mail.predictioncomp.com is served over plain HTTP.
+  Header always set Strict-Transport-Security "max-age=31536000"
 </IfModule>
 
 AddType application/manifest+json .webmanifest

@@ -11,5 +11,6 @@ foreach(pcSeasonClubs($db) as $team)echo '<url><loc>https://predictioncomp.com/c
 foreach($db->query('SELECT id,updated_at FROM fixtures') as $r){echo '<url><loc>https://predictioncomp.com/fixtures/'.(int)$r['id'].'</loc>';if(!empty($r['updated_at']))echo '<lastmod>'.xml(substr($r['updated_at'],0,10)).'</lastmod>';echo '</url>';}
 require __DIR__.'/seo-content.php';
 $weeks=[];foreach($db->query('SELECT kickoff_utc FROM fixtures') as $r)$weeks[weekKey($r['kickoff_utc'])]=true;
-foreach(array_keys($weeks) as $key)echo '<url><loc>https://predictioncomp.com/prediction-guides/'.xml($key).'</loc></url>';
+$guideCutoff=date('Y-m-d',strtotime('+14 days'));
+foreach(array_keys($weeks) as $key)if($key<=$guideCutoff)echo '<url><loc>https://predictioncomp.com/prediction-guides/'.xml($key).'</loc></url>';
 echo '</urlset>';

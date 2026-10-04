@@ -11,7 +11,7 @@ $pages=[
 
  'about'=>[
   'title'=>'About',
-  'description'=>'About PredictionComp, the free Premier League score prediction game.',
+  'description'=>'About PredictionComp, the free Premier League score prediction game: predict every match, beat five grades of bots and run private leagues with friends.',
   'body'=>'<p><strong>PredictionComp</strong> is a free Premier League score prediction game. Predict upcoming match scores, earn points when your calls are right and compare your performance with other players.</p><h2>Beat the bots. Compete with friends.</h2><p><strong>How good are your football predictions?</strong> Put them to the test against five levels of bot opponents, from SIM1 experts using form and match statistics to the unpredictable SIM5 players picking at random. Each bot has its own personality, and every one is clearly marked with a SIM label.</p><p>Try to finish above the toughest bots in the Global league, or add bot opponents to your friends league. Play for the season title or make a fresh challenge of each monthly table.</p><p><a href="/how-it-works">See scoring and bot levels →</a></p><h2>Challenge your friends</h2><p>Create a private friends league, share its invite link or code and see who knows their football best. Compete across season and monthly tables alongside the Global league.</p><h2>Built for football supporters</h2><p>PredictionComp is designed to be quick and simple on mobile or desktop. Predictions are locked automatically when each match kicks off.</p><p>PredictionComp is an independent supporter site and is not affiliated with, sponsored by or endorsed by the Premier League or any football club.</p>'
  ],
  'how-it-works'=>[
