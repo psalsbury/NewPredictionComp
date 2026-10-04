@@ -1,28 +1,40 @@
 # PredictionComp
 
-Live Premier League score prediction game at https://predictioncomp.com/. This repository tracks the deployed PHP site, the fixture and bot jobs, and the SQLite schema. The live database and credentials are intentionally excluded.
+Premier League prediction game deployed at https://predictioncomp.com/.
 
-## Layout
+## Club names and cache
 
-- Root PHP, SVG, robots, sitemap and .htaccess files: Apache document root at `/var/www/predictioncomp.com/public_html`.
-- `bin/sync_competition.py`: fixtures, final scores and points; API-Football plus a published next-round fallback and football-data.co.uk results fallback.
-- `bin/simulated_players.py`: 50 graded bots (10 per SIM level), personalities and predictions for real fixtures.
-- `systemd/`: production units and timers.
-- `schema.sql`: schema of the live SQLite database, without user data.
+Team names are data, not lists embedded in code. SQLite `clubs` and `club_aliases` store display names, source aliases and badge locations. Season membership comes from recorded fixtures, using July-to-June seasons. Existing metadata was migrated into these tables without changing fixture IDs or predictions.
 
-The PHP app expects `/var/lib/predictioncomp/predictioncomp.sqlite`. The fixture jobs use `/etc/predictioncomp/quiz-agent.env` for `API_FOOTBALL_KEY`; OAuth settings are read from `/etc/predictioncomp/google-oauth.json`. These files must stay outside the document root and repository.
+PHP `clubs.php` and Python `bin/club_catalog.py` share `/var/cache/predictioncomp/clubs.json`. A valid cache serves metadata without querying SQLite. It expires after six hours; the fixture sync refreshes it during season/upcoming updates, and the bot job refreshes it after its run. Updates use a file lock and atomic rename. PHP keeps the last valid cache if a refresh fails. Historical metadata remains available while current-season club lists exclude previous-season clubs.
 
-## Current fixture source
+The profile dropdown, club pages, standings, badges, sitemap and bots use this catalog. Feed payloads register previously unseen clubs and available badge metadata. Existing aliases and custom badge locations are database records; unknown badges display the football placeholder.
 
-API-Football's free plan does not provide 2026/27 fixtures. The fixture sync detects API errors rather than marking an empty response as a successful refresh. Round 6 (10–12 October 2026) is seeded from the [Premier League's published fixture list](https://www.premierleague.com/en/news/4675097/all-380-fixtures-for-202627-premier-league-season), with UK times converted to UTC in storage. The published schedule may change; review the official fixture list before each subsequent round. A real API fixture replaces a matching seeded fixture without discarding predictions. Completed scores also come from the current season football-data.co.uk CSV when the API is unavailable.
+## Deployment
 
-## Operational checks
+- PHP and static files: `/var/www/predictioncomp.com/public_html`.
+- Python jobs: `/opt/predictioncomp/bin`.
+- SQLite database: `/var/lib/predictioncomp/predictioncomp.sqlite`.
+- Systemd units/timers: `systemd/`.
+- `schema.sql` contains schema only, without user data or fixed club names.
+
+Create the cache directory writable by the application identity:
 
 ```sh
-php -l index.php
-python3 -m py_compile bin/*.py
-sudo systemctl start predictioncomp-sync.service
-sudo systemctl start predictioncomp-simulated-players.service
+sudo install -d -o www-data -g www-data -m 2775 /var/cache/predictioncomp
+sudo -u www-data python3 -c "import sys; sys.path.insert(0, '/opt/predictioncomp/bin'); from club_catalog import load_catalog; load_catalog(force=True)"
 ```
 
-Back up the SQLite database before a production migration. Keep live personal data, tokens and API credentials out of Git.
+Both job units permit writes to the database and cache directories. Reload systemd after changing units. Back up the database before applying migrations. Existing installations must preserve their club metadata and alias records, not replace the database with an empty schema.
+
+## Fixtures and season rollover
+
+The sync selects the active season at runtime. API-Football is the primary source; a validated published Premier League season schedule and the season-specific football-data.co.uk results CSV provide fallbacks. The fixed next-round fixture seed was removed. Source failures retain stored fixtures.
+
+The official published article URL is stored in `sync_meta` under `published_fixture_source:<season>`. For a new season, the sync attempts to discover its article from the official news listing. Operators can configure `PREDICTIONCOMP_PUBLISHED_URL`, with placeholders `{season}`, `{next_season}` and `{season_code}`, if discovery is unavailable. No previous-season article is reused for a different season.
+
+Secrets remain outside the repository: `/etc/predictioncomp/quiz-agent.env` and `/etc/predictioncomp/google-oauth.json`.
+
+## Validation
+
+PHP lint and Python compilation passed. Isolated database tests verified six-hour cache expiry, shared PHP/Python warm-cache reads without database queries, aliases, badges and next-season membership. The live homepage, club list, standings and sitemap returned HTTP 200, and all 20 current-season badge redirects passed.

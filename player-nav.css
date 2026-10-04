@@ -1,0 +1,76 @@
+.playernav{display:none}@media(max-width:720px){body{padding-bottom:calc(78px + env(safe-area-inset-bottom,0px))}.playernav{position:fixed;left:0;right:0;bottom:0;z-index:100;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:7px 8px calc(7px + env(safe-area-inset-bottom,0px));border-top:1px solid #34505e;background:#0e202c;box-shadow:0 -4px 20px #0003}.playernav a,.playernav a:first-child{margin:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;padding:7px 3px;border-radius:9px;min-height:52px;color:#a7becb;font:700 10px system-ui;text-decoration:none;min-width:0}.playernav a[aria-current="page"]{background:#193b2c;color:#99eab5}.playernav a:hover,.playernav a:focus-visible{background:#1b3442;color:#d4f5e3;outline-offset:-2px}.playernav span{white-space:nowrap}#predict,#leader{scroll-margin-top:14px}}
+.footballmenu{position:relative;color:#c8d9e3;font:700 12px system-ui}
+.footballmenu summary{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 12px;cursor:pointer;list-style:none;border:1px solid #34505e;border-radius:8px;background:#132a37;min-height:40px}
+.footballmenu summary::-webkit-details-marker{display:none}
+.footballmenu[open] summary{background:#193b2c;color:#a6efc0}
+.footballitems{position:absolute;right:0;top:calc(100% + 8px);z-index:150;width:220px;padding:6px;background:#102632;border:1px solid #34505e;border-radius:11px;box-shadow:0 10px 30px #0006}
+.footballitems a,.nav .links .footballitems a{display:block;margin:0;padding:12px;color:#c8d9e3;border:0;border-radius:6px;text-decoration:none;font:650 12px system-ui}
+.footballitems a:hover,.footballitems a:focus-visible{background:#214334;color:#b5f4cd}
+.navaccount{color:#b5ccda;text-decoration:none;font:700 12px system-ui;padding:9px 11px;border:1px solid #34505e;border-radius:8px;white-space:nowrap}
+.nav .brand{margin-right:auto}.nav .links{margin:0 12px}
+.publicnav{display:flex;align-items:center;gap:12px}.publicprimary{display:flex;align-items:center;gap:8px;margin-left:auto}
+.publicnav .publicprimary a{font:700 12px system-ui;padding:9px 10px;white-space:nowrap}
+.playernav .mobilefootball{align-self:stretch;display:flex;align-items:stretch}
+.playernav .mobilefootball summary{width:100%;border:0;background:transparent;flex-direction:column;gap:4px;padding:7px 3px;font-size:10px;min-height:52px}
+.playernav .mobilefootball summary span{font-size:21px;line-height:21px;order:-1}
+.playernav .footballitems{top:auto;bottom:calc(100% + 12px);right:0}
+.playernav .footballitems a,.playernav .footballitems a:first-child{display:block;min-height:44px;padding:13px 12px;font-size:12px}
+@media(max-width:720px){.nav .links,.publicprimary{display:none}.navaccount{margin-left:auto}.publicnav a:first-child{flex-basis:auto;margin:0}.publicnav{flex-wrap:nowrap}.playernav{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+/* One shared header across all page types, independent of legacy .nav rules. */
+.sitenavigation{box-sizing:border-box;width:100%;max-width:1160px;min-height:68px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:16px;background:#06131f}
+.sitenavigation a{text-decoration:none;margin:0;white-space:nowrap}
+.sitenavigation .sitebrand{color:#eef5f8;font:900 23px system-ui;margin-right:auto;padding:0;border:0;background:transparent}
+.sitebrand b{color:#35df7b}
+.siteprimary{display:flex;align-items:center;gap:8px}
+.sitenavigation .siteprimary>a,.sitenavigation .siteaccount{display:block;padding:10px 12px;color:#c8d9e3;font:700 12px system-ui;border:1px solid #34505e;border-radius:8px;background:#132a37}
+.sitenavigation .siteprimary>a:hover,.sitenavigation .siteaccount:hover{color:#b5f4cd;background:#193b2c}
+.sitenavigation .footballitems a{display:block;padding:12px;margin:0;border:0;background:transparent;color:#c8d9e3;font:650 12px system-ui}
+.sitenavigation .footballitems a:hover{background:#214334}
+@media(min-width:721px) and (max-width:900px){.sitenavigation{gap:9px;padding:12px 14px}.sitenavigation .sitebrand{font-size:20px}.siteprimary{gap:5px}.sitenavigation .siteprimary>a,.sitenavigation .siteaccount{padding:10px 9px}}
+@media(max-width:720px){.sitenavigation{min-height:62px;padding:12px 14px;gap:10px}.sitenavigation .sitebrand{font-size:18px}.sitenavigation .siteprimary{display:none}.sitenavigation .siteaccount{margin-left:auto;padding:9px 11px}}
+
+header.siteheader{max-width:none;width:100%;margin:0;padding:0;background:#06131f;flex-shrink:0}
+header .sitenavigation{flex-wrap:nowrap}
+header .sitenavigation .sitebrand{flex-basis:auto;margin-bottom:0;flex-shrink:0}
+header .sitenavigation .siteaccount{flex-shrink:0}
+@media(max-width:720px){header .sitenavigation{gap:10px;min-height:62px}header .sitenavigation .sitebrand{flex-basis:auto;margin:0 auto 0 0;font-size:18px}header .sitenavigation .siteaccount{margin:0;padding:9px 11px}}
+
+/* Mobile readability and touch controls shared by every page. */
+.datafreshness{font:12px system-ui;color:#9eb4c1;margin:12px 0;line-height:1.5}
+.datafreshness summary{cursor:pointer;min-height:44px;display:flex;align-items:center;gap:8px;color:#b4cad6}
+.datafreshness summary:before{content:"ⓘ"}
+.datafreshness[open] summary{color:#a6efc0}
+.datafreshness p{font-size:12px;margin:5px 0;color:#9eb4c1}
+#predict>.datafreshness{padding:0 14px;margin:0}
+.fixturestatus{color:#e7c98c;font-size:12px;font-weight:750}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid #8cddad;outline-offset:3px}
+@media(max-width:720px){
+ body{overflow-wrap:break-word}
+ main,.main,.card,.panel,.standalonepanel,.team,.home,.away{min-width:0}
+ main>h1,.playerpagetitle{font-size:28px;line-height:1.16;letter-spacing:-.6px;margin:18px 0 12px}
+ main>p:not(.note){font-size:15px;line-height:1.55}
+ .sitenavigation{min-height:56px;padding:6px 14px}
+ .sitenavigation .siteaccount{min-height:44px;display:flex;align-items:center}
+ .standings{table-layout:fixed}
+ .standings .clubcol{width:52%}
+ .tableclub span{overflow-wrap:break-word}
+ .standings td,.standings th{font-size:12px}
+ .tableclub{min-height:32px}
+ .club{min-height:64px;min-width:0}
+ .club img{flex-shrink:0}
+ .pager a,.tablepager a,.copybtn,.leagueviewbtn,.shareguide,.resulttabs button{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+ .pager,.tablepager{flex-wrap:wrap}
+ .leagueitem{grid-template-columns:minmax(0,1fr) auto;gap:8px}
+ .leagueitem>*{min-width:0}
+ .leagueitem code{overflow-wrap:anywhere;white-space:normal}
+ .leagueitem .copybtn{grid-column:2}
+ .profilemodal input,.profilemodal select,.tools input,.leaguesmodal input{font-size:16px}
+ .periodtabs{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+ .fixture .team{min-width:0}
+ .fixture .clubnamelink{overflow-wrap:break-word}
+ .fixturestatus{white-space:normal;text-align:center}
+ footer,.footer{max-width:100%}
+}
+
+@media(max-width:720px){.standings .extended,.standings .formcol{display:none}.standings th,.standings td{padding:10px 5px}.standalonepanel .leagueitem{display:flex;flex-wrap:wrap}.standalonepanel .leagueitem>div:first-child{flex:1 1 130px}.standalonepanel .leagueitem button{min-height:44px}}

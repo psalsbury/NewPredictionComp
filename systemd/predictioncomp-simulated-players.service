@@ -9,6 +9,6 @@ EnvironmentFile=/etc/predictioncomp/quiz-agent.env
 ExecStart=/usr/bin/python3 /opt/predictioncomp/bin/simulated_players.py
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/predictioncomp
+ReadWritePaths=/var/lib/predictioncomp /var/cache/predictioncomp
 PrivateTmp=true
 NoNewPrivileges=true

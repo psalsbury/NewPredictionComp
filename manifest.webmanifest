@@ -1,0 +1,40 @@
+{
+  "id": "/",
+  "name": "PredictionComp",
+  "short_name": "PredictionComp",
+  "description": "Predict Premier League scores, compete with friends and beat the bots.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#071522",
+  "theme_color": "#071522",
+  "lang": "en-GB",
+  "icons": [
+    {
+      "src": "/assets/app/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/app/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "My predictions",
+      "url": "/#predict"
+    },
+    {
+      "name": "My results",
+      "url": "/my-results"
+    },
+    {
+      "name": "Leagues",
+      "url": "/leagues"
+    }
+  ]
+}

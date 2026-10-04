@@ -14,17 +14,13 @@ NAMES = [
 ]
 TARGET_BOTS = 50
 BOTS_PER_GRADE = 10
-CLUBS = ['Arsenal','Aston Villa','AFC Bournemouth','Brentford','Brighton & Hove Albion','Chelsea','Coventry City','Crystal Palace','Everton','Fulham','Hull City','Ipswich Town','Leeds United','Liverpool','Manchester City','Manchester United','Newcastle United','Nottingham Forest','Sunderland','Tottenham Hotspur']
-TEAM_ALIASES = {
-    'Bournemouth': 'AFC Bournemouth', 'Brighton': 'Brighton & Hove Albion',
-    'Man City': 'Manchester City', 'Man United': 'Manchester United',
-    "Nott'm Forest": 'Nottingham Forest', 'Newcastle': 'Newcastle United',
-    'Leeds': 'Leeds United', 'Tottenham': 'Tottenham Hotspur',
-}
-
-def same_team(left, right):
-    return TEAM_ALIASES.get(left, left) == TEAM_ALIASES.get(right, right)
-
+from club_catalog import load_catalog, canonical, register_team, season_year
+_catalog=load_catalog()
+season=season_year()
+season_code=f'{season%100:02d}{(season+1)%100:02d}'
+CLUBS=_catalog['seasons'].get(str(season),[])
+if not CLUBS: raise RuntimeError('No clubs available for the current season')
+def same_team(left,right): return canonical(left,_catalog)==canonical(right,_catalog)
 def api(params):
     if not KEY:
         return {'response': []}
@@ -129,6 +125,7 @@ def shape_score(home_goal, away_goal, profile, rng, strength):
     return max(0, min(6, home_goal)), max(0, min(6, away_goal))
 
 def predict(grade, uid, external, home, away, supported, suffix, profile):
+    home,away=canonical(home,_catalog),canonical(away,_catalog)
     rng = random.Random(f'{uid}:{external}:{suffix}:grade-{grade}:{profile["label"]}')
     if grade == 1:
         # Strongest model: recent and venue form, head-to-head, attack/defence,
@@ -234,25 +231,29 @@ for position, name in enumerate(NAMES):
     c.execute('UPDATE users SET bot_grade=? WHERE is_bot=1 AND display_name=?',
               (position // BOTS_PER_GRADE + 1, name))
 
-data = api({'league': 39, 'season': 2026, 'status': 'FT'})
+data = api({'league': 39, 'season': season, 'status': 'FT'})
 completed = []
 for item in data.get('response', []):
     fixture, teams, goals, league = item['fixture'], item['teams'], item.get('goals') or {}, item.get('league') or {}
     if goals.get('home') is None or goals.get('away') is None:
         continue
+    for team in teams.values():register_team(c,team['name'],team.get('logo'))
     completed.append({
         'external': int(fixture['id']), 'timestamp': int(fixture.get('timestamp', 0)),
         'kickoff': datetime.fromtimestamp(int(fixture.get('timestamp', 0)), timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
         'round': str(league.get('round') or ''), 'home': teams['home']['name'], 'away': teams['away']['name'],
         'hg': int(goals['home']), 'ag': int(goals['away']), 'status': 'FT'
     })
+for match in completed:
+    match['home']=canonical(match['home'],_catalog)
+    match['away']=canonical(match['away'],_catalog)
 completed.sort(key=lambda row: row['timestamp'])
 
 # Never fabricate past fixtures. If API-Football is temporarily unavailable,
 # load verified 2026/27 Premier League results from football-data.co.uk.
 if not completed:
     try:
-        source = 'https://www.football-data.co.uk/mmz4281/2627/E0.csv'
+        source = f'https://www.football-data.co.uk/mmz4281/{season_code}/E0.csv'
         with urllib.request.urlopen(source, timeout=45) as response:
             rows = csv.DictReader(io.StringIO(response.read().decode('utf-8-sig')))
             for row in rows:
@@ -262,12 +263,12 @@ if not completed:
                     f"{row['Date']} {row.get('Time') or '15:00'}", '%d/%m/%Y %H:%M'
                 ).replace(tzinfo=ZoneInfo('Europe/London'))
                 when = local.astimezone(timezone.utc)
-                identity = f"PL2627:{row['Date']}:{row['HomeTeam']}:{row['AwayTeam']}"
+                identity = f"PL{season_code}:{row['Date']}:{row['HomeTeam']}:{row['AwayTeam']}"
                 external = 100000000 + int(hashlib.sha256(identity.encode()).hexdigest()[:12], 16) % 800000000
                 completed.append({
                     'external': external, 'timestamp': int(when.timestamp()),
                     'kickoff': when.strftime('%Y-%m-%dT%H:%M:%SZ'),
-                    'round': 'Premier League 2026/27', 'home': row['HomeTeam'],
+                    'round': f'Premier League {season}/{str(season+1)[2:]}', 'home': row['HomeTeam'],
                     'away': row['AwayTeam'], 'hg': int(row['FTHG']),
                     'ag': int(row['FTAG']), 'status': 'FT'
                 })
@@ -281,9 +282,9 @@ if not completed:
         FROM fixtures
         WHERE external_id > 0 AND status='FT'
           AND home_score IS NOT NULL AND away_score IS NOT NULL
-          AND kickoff_utc >= '2026-08-01T00:00:00Z'
+          AND kickoff_utc >= ? AND kickoff_utc < ?
         ORDER BY kickoff_utc
-    """):
+    """, (f'{season}-07-01',f'{season+1}-07-01')):
         try:
             when = datetime.fromisoformat(str(kickoff).replace('Z', '+00:00'))
         except ValueError:
@@ -294,6 +295,9 @@ if not completed:
             'round': str(round_name or ''), 'home': home, 'away': away,
             'hg': int(hg), 'ag': int(ag), 'status': 'FT'
         })
+for match in completed:
+    match['home']=canonical(match['home'],_catalog)
+    match['away']=canonical(match['away'],_catalog)
 completed.sort(key=lambda row: row['timestamp'])
 
 # Remove the old synthetic matchweeks and all predictions attached to them.
@@ -383,3 +387,5 @@ distribution = dict(c.execute('SELECT bot_grade,COUNT(*) FROM users WHERE is_bot
 print('simulated_players', len(bots), 'grades', distribution, 'completed_fixtures', len(completed),
       'historical_predictions_written', historical_written, 'future_fixtures', len(fixtures),
       'future_predictions_written', written)
+
+load_catalog(c,force=True)

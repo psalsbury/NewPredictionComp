@@ -9,22 +9,9 @@ DB='/var/lib/predictioncomp/predictioncomp.sqlite'
 KEY=os.environ.get('API_FOOTBALL_KEY','')
 FINAL={'FT','AET','PEN'}
 TERMINAL=FINAL|{'PST','CANC','ABD','AWD','WO'}
-# Premier League fixture list, https://www.premierleague.com/en/news/4675097/
-# UK local time; published fixtures may change and should be reviewed against the official list.
-NEXT_ROUND=[
- ('2026-10-10','12:30','Arsenal','Leeds United'),
- ('2026-10-10','15:00','Aston Villa','Brentford'),
- ('2026-10-10','15:00','Chelsea','AFC Bournemouth'),
- ('2026-10-10','15:00','Ipswich Town','Fulham'),
- ('2026-10-10','15:00','Sunderland','Brighton & Hove Albion'),
- ('2026-10-10','17:30','Manchester United','Tottenham Hotspur'),
- ('2026-10-11','14:00','Crystal Palace','Nottingham Forest'),
- ('2026-10-11','14:00','Hull City','Everton'),
- ('2026-10-11','16:30','Liverpool','Manchester City'),
- ('2026-10-12','20:00','Coventry City','Newcastle United'),
-]
-ALIASES={'Bournemouth':'AFC Bournemouth','Brighton':'Brighton & Hove Albion','Coventry':'Coventry City','Hull':'Hull City','Ipswich':'Ipswich Town','Leeds':'Leeds United','Man City':'Manchester City','Man United':'Manchester United',"Nott'm Forest":'Nottingham Forest','Newcastle':'Newcastle United','Tottenham':'Tottenham Hotspur'}
-def canonical(name): return ALIASES.get(name,name)
+from club_catalog import load_catalog, canonical as catalog_name, register_team, season_year
+_catalog=load_catalog()
+def canonical(name): return catalog_name(name,_catalog)
 def api(params):
  if not KEY: raise RuntimeError('API_FOOTBALL_KEY missing')
  u='https://v3.football.api-sports.io/fixtures?'+urllib.parse.urlencode(params)
@@ -32,11 +19,24 @@ def api(params):
  if data.get('errors'): raise RuntimeError('API-Football: '+str(data['errors']))
  return data.get('response',[])
 
-PUBLISHED_URL='https://www.premierleague.com/en/news/4675097/all-380-fixtures-for-202627-premier-league-season'
-ALIASES.update({'Man Utd':'Manchester United','Spurs':'Tottenham Hotspur'})
-def published_fixtures(season):
- if season!=2026: raise RuntimeError('Published source is configured for 2026/27 only')
- request=urllib.request.Request(PUBLISHED_URL,headers={'User-Agent':'PredictionComp fixture sync'})
+def published_source(season,connection=None):
+ configured=os.environ.get('PREDICTIONCOMP_PUBLISHED_URL')
+ if configured:
+  return configured.format(season=season,next_season=season+1,season_code=f'{season%100:02d}{(season+1)%100:02d}')
+ with sqlite3.connect(DB) as db:
+  row=db.execute('SELECT value FROM sync_meta WHERE key=?',(f'published_fixture_source:{season}',)).fetchone()
+  if row:return row[0]
+ request=urllib.request.Request('https://www.premierleague.com/en/news',headers={'User-Agent':'PredictionComp fixture sync'})
+ with urllib.request.urlopen(request,timeout=30) as response: page=response.read().decode('utf-8')
+ code=f'{season%100:02d}{(season+1)%100:02d}'
+ match=re.search(r'/en/news/[0-9]+/all-380-fixtures-for-'+code+r'[^"<>\s]*',page,re.I)
+ if not match:raise RuntimeError(f'No published fixture source found for season {season}; existing fixtures retained')
+ url=urllib.parse.urljoin('https://www.premierleague.com',html.unescape(match.group(0)).rstrip("'"))
+ if urllib.parse.urlparse(url).hostname!='www.premierleague.com':raise RuntimeError('Unexpected published fixture host')
+ if connection is not None:connection.execute('INSERT OR REPLACE INTO sync_meta(key,value) VALUES(?,?)',(f'published_fixture_source:{season}',url))
+ return url
+def published_fixtures(season,connection=None):
+ request=urllib.request.Request(published_source(season,connection),headers={'User-Agent':'PredictionComp fixture sync'})
  with urllib.request.urlopen(request,timeout=30) as response: page=response.read().decode('utf-8')
  fixtures={}
  for paragraph in re.findall(r'<p\b[^>]*>(.*?)</p>',page,re.S|re.I):
@@ -61,7 +61,9 @@ def published_fixtures(season):
   raise RuntimeError(f'Published fixture validation failed: {len(fixtures)} pairings, {len(teams)} teams')
  return fixtures
 def refresh_published(c,season):
- fixtures=published_fixtures(season)
+ fixtures=published_fixtures(season,c)
+ for home,away in fixtures:
+  register_team(c,home);register_team(c,away)
  now=datetime.now(timezone.utc);added=updated=0
  for (home,away),kick in fixtures.items():
   if datetime.fromisoformat(kick.replace('Z','+00:00'))<=now: continue
@@ -83,6 +85,7 @@ def matching(c,home,away,date):
   if canonical(h)==canonical(home) and canonical(a)==canonical(away): return fid
  return None
 def save(c,x,full=True):
+ for team in x['teams'].values():register_team(c,team['name'],team.get('logo'))
  f=x['fixture'];t=x['teams'];g=x.get('goals') or {};status=f['status']['short']
  home,away=canonical(t['home']['name']),canonical(t['away']['name'])
  existing=None
@@ -105,19 +108,9 @@ def save(c,x,full=True):
  else:
   c.execute('UPDATE fixtures SET home_score=?,away_score=?,status=?,updated_at=CURRENT_TIMESTAMP WHERE external_id=?',
    (g.get('home'),g.get('away'),status,f['id']))
-def seed_round(c):
- count=0
- for day,clock,home,away in NEXT_ROUND:
-  dt=datetime.strptime(day+' '+clock,'%Y-%m-%d %H:%M').replace(tzinfo=ZoneInfo('Europe/London')).astimezone(timezone.utc)
-  season_pair=any(canonical(h)==home and canonical(a)==away for h,a in c.execute("SELECT home,away FROM fixtures WHERE kickoff_utc>=? AND kickoff_utc<?",('2026-07-01','2027-07-01')))
-  if dt<=datetime.now(timezone.utc) or season_pair: continue
-  external=900000000+int(hashlib.sha256(f'PL2627:{day}:{home}:{away}'.encode()).hexdigest()[:10],16)%90000000
-  c.execute("""INSERT OR IGNORE INTO fixtures(external_id,round,kickoff_utc,home,away,status)
-   VALUES(?,?,?,?,?,'NS')""",(external,'Premier League 2026/27 · Round 6',dt.strftime('%Y-%m-%dT%H:%M:%SZ'),home,away))
-  count+=c.execute('SELECT changes()').fetchone()[0]
- return count
 def fallback_results(c):
- url='https://www.football-data.co.uk/mmz4281/2627/E0.csv'
+ season=season_year();season_code=f'{season%100:02d}{(season+1)%100:02d}'
+ url=f'https://www.football-data.co.uk/mmz4281/{season_code}/E0.csv'
  with urllib.request.urlopen(url,timeout=30) as response:
   rows=csv.DictReader(io.StringIO(response.read().decode('utf-8-sig')))
   updated=0
@@ -181,7 +174,7 @@ def run_sync():
    c.execute("""INSERT INTO sync_meta(key,value) VALUES('upcoming_sync',?)
     ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP""",(datetime.now(timezone.utc).isoformat(),))
   except (RuntimeError, OSError, ValueError) as exc: print('upcoming_api_unavailable',str(exc)[:200])
- seeded=seed_round(c)
+ # Fixed fixture seeds removed; source failures retain existing stored fixtures.
  marks=','.join('?' for _ in TERMINAL)
  sql=f"""SELECT external_id FROM fixtures WHERE external_id IS NOT NULL
   AND kickoff_utc<=datetime('now','-105 minutes') AND kickoff_utc>=datetime('now','-24 hours')
@@ -190,10 +183,14 @@ def run_sync():
  if ids:
   try:
    for item in api({'ids':'-'.join(ids)}): save(c,item,False);polled+=1
+   c.execute("INSERT INTO sync_meta(key,value) VALUES('results_checked',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(datetime.now(timezone.utc).isoformat(),))
   except (RuntimeError,OSError,ValueError) as exc: print('results_api_unavailable',str(exc)[:200])
- try: results=fallback_results(c)
+ try:
+  results=fallback_results(c)
+  c.execute("INSERT INTO sync_meta(key,value) VALUES('results_checked',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(datetime.now(timezone.utc).isoformat(),))
  except (OSError,ValueError) as exc: print('results_fallback_unavailable',str(exc)[:200])
  score(c);c.commit()
+ load_catalog(c,force=night_due or bool(up))
  print('upcoming_refreshed',up,'official_round_seeded',seeded,'results_polled',polled,'csv_results_updated',results)
 
 def report_snapshot():

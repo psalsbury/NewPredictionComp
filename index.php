@@ -9,12 +9,8 @@ if(!$user){
 }
 $uid=(int)$user['id'];
 require_once __DIR__.'/standings.php';
-$clubSeasonYear=(int)(new DateTimeImmutable('now',new DateTimeZone('Europe/London')))->format('Y');
-if((int)(new DateTimeImmutable('now',new DateTimeZone('Europe/London')))->format('n')<7)$clubSeasonYear--;
-$premierLeagueClubs=array_column(leagueStandings($db,$clubSeasonYear.'-07-01',($clubSeasonYear+1).'-07-01')['rows'],'team');
-$clubDisplayNames=['Bournemouth'=>'AFC Bournemouth','Brighton'=>'Brighton & Hove Albion'];
-$premierLeagueClubs=array_map(fn($club)=>$clubDisplayNames[$club]??$club,$premierLeagueClubs);
-sort($premierLeagueClubs,SORT_STRING);
+$premierLeagueClubs=pcSeasonClubs($db);
+if(!empty($user['supported_club']))$user['supported_club']=pcClubName($user['supported_club'],$db);
 if(empty($_SESSION['registration_csrf']))$_SESSION['registration_csrf']=bin2hex(random_bytes(32));
 
 function pc_cookie(string $token): void {
