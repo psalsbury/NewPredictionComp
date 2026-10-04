@@ -6,12 +6,18 @@ Require valid-user
 </Files>
 
 RewriteEngine On
+RewriteRule ^my-results/?$ player-page.php?screen=results [L]
+RewriteRule ^leagues/?$ player-page.php?screen=leagues [L]
+RewriteRule ^account/?$ player-page.php?screen=account [L]
+RewriteRule ^table/?$ public.php?kind=table [L,QSA]
+RewriteRule ^prediction-guides/?$ public.php?kind=guides [L,QSA]
+RewriteRule ^prediction-guides/([0-9]{4}-[0-9]{2}-[0-9]{2})/?$ public.php?kind=guide&week=$1 [L,QSA]
 RewriteRule ^sitemap\.xml$ sitemap.php [L]
 RewriteRule ^clubs/?$ public.php?kind=clubs [L,QSA]
 RewriteRule ^clubs/([a-z0-9-]+)/?$ public.php?kind=club&slug=$1 [L,QSA]
 RewriteRule ^fixtures/?$ public.php?kind=fixtures [L,QSA]
 RewriteRule ^fixtures/([0-9]+)/?$ public.php?kind=match&id=$1 [L,QSA]
-RewriteRule ^(about|privacy|contact|how-it-works)/?$ info.php?page=$1 [L,QSA]
+RewriteRule ^(about|privacy|contact|how-it-works|install)/?$ info.php?page=$1 [L,QSA]
 RewriteCond %{HTTP_HOST} ^www\.predictioncomp\.com$ [NC]
 RewriteRule ^ https://predictioncomp.com%{REQUEST_URI} [R=301,L]
 
@@ -24,4 +30,11 @@ Options -Indexes
   Header always set X-Content-Type-Options "nosniff"
   Header always set Referrer-Policy "strict-origin-when-cross-origin"
   Header always set Permissions-Policy "geolocation=(), camera=(), microphone=()"
+</IfModule>
+
+AddType application/manifest+json .webmanifest
+<IfModule mod_headers.c>
+<Files "sw.js">
+Header set Cache-Control "no-cache"
+</Files>
 </IfModule>
