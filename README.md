@@ -26,7 +26,14 @@ To keep drive-by players off the global table, a guest is only listed once they 
 
 ## Look and feel
 
-`assets/theme.css` is the shared visual layer, loaded last on every page so it overrides older inline styles. Fonts (Barlow, Barlow Condensed; SIL OFL) are self-hosted in `assets/fonts`.
+`assets/theme.css` is the shared visual layer, loaded last on every page so it overrides older inline styles. Fonts (Barlow, Barlow Condensed; SIL OFL) are self-hosted in `assets/fonts`. Browsers cache CSS and JS for a week (`.htaccess`), so bump the `?v=` number on `theme.css` links in `index.php`, `public.php` and `info.php` after editing it.
+
+## Search (SEO)
+
+- Match, club and weekly guide pages use plain-English form summaries and key numbers (`seo-content.php`). Finished weeks get a "Week in review" built from game data: hardest and easiest calls, exact scores and top scorers (bots are labelled).
+- Match titles target "X v Y prediction & preview" before kick-off and "X 2–1 Y: result & prediction review" afterwards.
+- Every page has Open Graph and Twitter tags with `assets/og-image.png`. The homepage carries WebSite, Organization and WebApplication structured data, and match pages carry SportsEvent.
+- `sitemap.php` gives each URL a `lastmod` from fixture sync times (`info.php` mtime for static pages). `/p.html` (an old static homepage copy) 301-redirects to `/`.
 
 ## Deployment
 

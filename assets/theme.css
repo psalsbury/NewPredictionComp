@@ -282,3 +282,11 @@ body>footer a{color:var(--text-2)}
 #scorePickerDialog button[data-delta]:hover:not(:disabled){border-color:var(--gold-line);background:var(--gold-soft);color:var(--gold)}
 #scorePickerDialog button[data-delta]:disabled{opacity:.35}
 #pickerHomeScore,#pickerAwayScore{font-family:var(--display)}
+
+/* SEO content blocks */
+.lede{color:var(--text);font-size:19px;line-height:1.6;max-width:44em}
+.keynumbers ul,.weekreview ul{margin:8px 0 0;padding-left:20px;color:var(--text-2);line-height:1.7}
+.keynumbers li,.weekreview li{margin:4px 0}
+.weekreview{margin-top:22px;border-color:var(--gold-line)}
+.fixture .date .previewlink{color:var(--text-3);font-size:12px;font-weight:600;text-decoration:none}
+.fixture .date .previewlink:hover{color:var(--gold);text-decoration:underline}

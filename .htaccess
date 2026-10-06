@@ -11,6 +11,8 @@ RewriteCond %{HTTP_HOST} ^www\.predictioncomp\.com$ [NC]
 RewriteRule ^ https://predictioncomp.com%{REQUEST_URI} [R=301,L]
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.+)/$ https://predictioncomp.com/$1 [R=301,L]
+# Old static copy of the homepage.
+RewriteRule ^p\.html$ https://predictioncomp.com/ [R=301,L]
 RewriteRule ^my-results/?$ player-page.php?screen=results [L]
 RewriteRule ^leagues/?$ player-page.php?screen=leagues [L]
 RewriteRule ^account/?$ player-page.php?screen=account [L]
@@ -38,6 +40,15 @@ Options -Indexes
 </IfModule>
 
 AddType application/manifest+json .webmanifest
+# Browser caching. Fonts and images rarely change; CSS and JS are versioned with ?v= in the pages.
+<IfModule mod_headers.c>
+<FilesMatch "\.(woff2|png|jpg|jpeg|webp|svg|ico)$">
+Header set Cache-Control "public, max-age=2592000"
+</FilesMatch>
+<FilesMatch "\.(css|js)$">
+Header set Cache-Control "public, max-age=604800"
+</FilesMatch>
+</IfModule>
 <IfModule mod_headers.c>
 <Files "sw.js">
 Header set Cache-Control "no-cache"
