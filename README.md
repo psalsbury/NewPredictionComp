@@ -10,6 +10,16 @@ PHP `clubs.php` and Python `bin/club_catalog.py` share `/var/cache/predictioncom
 
 The profile dropdown, club pages, standings, badges, sitemap and bots use this catalog. Feed payloads register previously unseen clubs and available badge metadata. Existing aliases and custom badge locations are database records; unknown badges display the football placeholder.
 
+## Guest play
+
+Visitors can predict without registering. The first save opens a dialog where they confirm a suggested display name or type their own; that commitment turns their browser token into a player (`users.guest_since` set, no email). Guest sign-ups are limited to 8 an hour and 30 a day per IP (`guest_signups`).
+
+To keep drive-by players off the global table, a guest is only listed once they have predicted in two different matchweeks (Friday to Thursday) or added an email. Until then only the guest sees their own row, tagged "Only you". Players created before guest play are unaffected. Friends leagues still need an email.
+
+## Look and feel
+
+`assets/theme.css` is the shared visual layer, loaded last on every page so it overrides older inline styles. Fonts (Barlow, Barlow Condensed; SIL OFL) are self-hosted in `assets/fonts`.
+
 ## Deployment
 
 - PHP and static files: `/var/www/predictioncomp.com/public_html`.

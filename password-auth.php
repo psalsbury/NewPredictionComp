@@ -1,4 +1,38 @@
 <?php
+/* Shared display-name rules for registration, guest players and profile edits. Returns [status,message] or null. */
+function pc_display_name_error(PDO $db,string $name,int $exceptId=0):?array{
+ if(strlen($name)<2||strlen($name)>24||!preg_match('/^[\p{L}\p{N}][\p{L}\p{N} _.-]*$/u',$name)||in_array(strtolower($name),['guest','admin','administrator'],true))return [400,'Choose a display name of 2–24 characters using letters, numbers, spaces, dots, underscores or hyphens.'];
+ $q=$db->prepare('SELECT id FROM users WHERE LOWER(display_name)=LOWER(?) AND id<>?');$q->execute([$name,$exceptId]);
+ return $q->fetchColumn()?[409,'That display name is taken. Choose another.']:null;
+}
+const PC_NAME_WORDS=[['Late','Golden','Top','Clean','Lucky','Bold','Quick','Cool','Sharp','Super','Mighty','Cheeky','Calm','Clever','Brave','Steady','Wily','Rapid','Silky','Deft'],
+ ['Winner','Volley','Header','Striker','Keeper','Tackle','Nutmeg','Rabona','Panenka','Sweeper','Winger','Finisher','Captain','Poacher','Maestro','Dribbler','Curler','Chip','Equaliser','Overlap']];
+function pc_suggest_name(PDO $db):string{
+ for($i=0;$i<12;$i++){
+  $name=PC_NAME_WORDS[0][random_int(0,count(PC_NAME_WORDS[0])-1)].PC_NAME_WORDS[1][random_int(0,count(PC_NAME_WORDS[1])-1)].random_int(10,99);
+  if(!pc_display_name_error($db,$name))return $name;
+ }
+ return 'Player'.random_int(1000,9999);
+}
+/* Guest play: a visitor confirms a display name and their browser token becomes a player.
+ * No email is needed, but guests are only listed on the global table once they have
+ * predicted in two different matchweeks (see pc_listed_sql), or as soon as they add an email. */
+function pc_guest_api(PDO $db,int $uid,string $token,string $action,array $in):void{
+ if($action!=='guest_start')return;
+ if($_SERVER['REQUEST_METHOD']!=='POST'||!hash_equals((string)($_SESSION['registration_csrf']??''),(string)($in['csrf']??'')))pc_auth_error(403,'Please refresh the page and try again.');
+ if($uid>0){echo json_encode(['ok'=>true]);exit;}
+ if(trim((string)($in['website']??''))!==''||empty($in['confirm']))pc_auth_error(400,'Confirm your display name to start playing.');
+ if(!preg_match('/^[a-f0-9]{32}$/',$token))pc_auth_error(400,'Please allow cookies for PredictionComp, then refresh the page.');
+ $name=trim((string)preg_replace('/\s+/u',' ',(string)($in['name']??'')));
+ if($nameError=pc_display_name_error($db,$name))pc_auth_error($nameError[0],$nameError[1]);
+ $ip=hash('sha256','guest|'.($_SERVER['REMOTE_ADDR']??''));$now=time();
+ $db->prepare('DELETE FROM guest_signups WHERE created_at<?')->execute([$now-86400]);
+ $q=$db->prepare('SELECT SUM(created_at>=?),COUNT(*) FROM guest_signups WHERE ip_hash=?');$q->execute([$now-3600,$ip]);[$hour,$day]=array_map('intval',$q->fetch(PDO::FETCH_NUM));
+ if($hour>=8||$day>=30)pc_auth_error(429,'Lots of new players have joined from this connection. Please try again later, or register with email.');
+ $db->prepare('INSERT INTO users(token,display_name,guest_since,onboarding_seen) VALUES(?,?,CURRENT_TIMESTAMP,1)')->execute([$token,$name]);
+ $db->prepare('INSERT INTO guest_signups(ip_hash,created_at) VALUES(?,?)')->execute([$ip,$now]);
+ session_regenerate_id(true);echo json_encode(['ok'=>true,'name'=>$name]);exit;
+}
 function pc_auth_error(int $status,string $message):void{http_response_code($status);echo json_encode(['ok'=>false,'error'=>$message]);exit;}
 function pc_password_api(PDO $db,array $user,int $uid,string $action,array $in):void{
  if(!in_array($action,['password_register','password_login','password_setup'],true))return;
@@ -28,8 +62,7 @@ function pc_password_api(PDO $db,array $user,int $uid,string $action,array $in):
    if($uid>0)pc_auth_error(400,'Use Account to add email/password to your existing profile.');
    if($existing)pc_auth_error(409,'That email already has an account. Sign in or reset your password.');
    $name=trim((string)($in['name']??''));
-   if(strlen($name)<2||strlen($name)>24||!preg_match('/^[\p{L}\p{N}][\p{L}\p{N} _.-]*$/u',$name)||in_array(strtolower($name),['guest','admin','administrator'],true))pc_auth_error(400,'Choose a display name of 2–24 characters using letters, numbers, spaces, dots, underscores or hyphens.');
-   $q=$db->prepare('SELECT id FROM users WHERE LOWER(display_name)=LOWER(?)');$q->execute([$name]);if($q->fetchColumn())pc_auth_error(409,'That display name is taken. Choose another.');
+   if($nameError=pc_display_name_error($db,$name))pc_auth_error($nameError[0],$nameError[1]);
    $newToken=token();$db->prepare('INSERT INTO users(token,display_name,email,password_hash,onboarding_seen) VALUES(?,?,?,?,0)')->execute([$newToken,$name,$email,password_hash($password,PASSWORD_DEFAULT)]);
    session_regenerate_id(true);pc_cookie($newToken);pc_join_pending($db,$newToken);
   }

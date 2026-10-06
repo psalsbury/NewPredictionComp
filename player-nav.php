@@ -14,5 +14,5 @@ function footballMenu(string $class=''):string {
 }
 
 function siteHeaderNavigation(string $accountLabel='Account'):void {
- echo '<nav class="sitenavigation" aria-label="Main navigation"><a class="sitebrand" href="/">⚽ Prediction<b>Comp</b></a><div class="siteprimary"><a href="/#predict">Predict</a><a href="/my-results">My Results</a><a href="/leagues">Leagues</a>'.footballMenu().'</div><a class="siteaccount" href="/account">'.htmlspecialchars($accountLabel,ENT_QUOTES,'UTF-8').'</a></nav>';
+ echo '<nav class="sitenavigation" aria-label="Main navigation"><a class="sitebrand" href="/" aria-label="PredictionComp home"><svg class="brandmark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#f4c542"/><path d="M9 10.5h14M9 16h14M9 21.5h8" stroke="#1b1405" stroke-width="2.6" stroke-linecap="round"/><circle cx="22.5" cy="21.5" r="2.2" fill="#1b1405"/></svg><span>Prediction<b>Comp</b></span></a><div class="siteprimary"><a href="/#predict">Predict</a><a href="/my-results">My Results</a><a href="/leagues">Leagues</a>'.footballMenu().'</div><a class="siteaccount" href="/account">'.htmlspecialchars($accountLabel,ENT_QUOTES,'UTF-8').'</a></nav>';
 }

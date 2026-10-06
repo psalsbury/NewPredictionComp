@@ -25,6 +25,8 @@ CREATE TABLE league_members(league_id INTEGER NOT NULL,user_id INTEGER NOT NULL,
 
 CREATE TABLE leagues(id INTEGER PRIMARY KEY, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL, owner_user_id INTEGER NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 
+CREATE TABLE guest_signups(ip_hash TEXT NOT NULL,created_at INTEGER NOT NULL);
+
 CREATE TABLE password_login_attempts (key TEXT PRIMARY KEY, attempts INTEGER NOT NULL DEFAULT 0, window_start INTEGER NOT NULL);
 
 CREATE TABLE prediction_reminder_log(user_id INTEGER NOT NULL,week_key TEXT NOT NULL,status TEXT NOT NULL,attempts INTEGER NOT NULL DEFAULT 0,attempted_at TEXT,sent_at TEXT,unsubscribe_hash TEXT,PRIMARY KEY(user_id,week_key),FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);
@@ -33,7 +35,7 @@ CREATE TABLE predictions(id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, fixtu
 
 CREATE TABLE sync_meta(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated_at TEXT DEFAULT CURRENT_TIMESTAMP);
 
-CREATE TABLE users(id INTEGER PRIMARY KEY, token TEXT UNIQUE NOT NULL, display_name TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, supported_club TEXT, email TEXT, google_sub TEXT, email_verified_at TEXT, avatar_url TEXT, is_bot INTEGER NOT NULL DEFAULT 0, bot_grade INTEGER, first_played_at TEXT, play_alert_sent_at TEXT, prediction_reminders INTEGER NOT NULL DEFAULT 0, reminder_lead_hours INTEGER NOT NULL DEFAULT 24, password_hash TEXT, onboarding_seen INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE users(id INTEGER PRIMARY KEY, token TEXT UNIQUE NOT NULL, display_name TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, supported_club TEXT, email TEXT, google_sub TEXT, email_verified_at TEXT, avatar_url TEXT, is_bot INTEGER NOT NULL DEFAULT 0, bot_grade INTEGER, first_played_at TEXT, play_alert_sent_at TEXT, prediction_reminders INTEGER NOT NULL DEFAULT 0, reminder_lead_hours INTEGER NOT NULL DEFAULT 24, password_hash TEXT, onboarding_seen INTEGER NOT NULL DEFAULT 1, guest_since TEXT);
 
 CREATE INDEX auth_magic_links_email_created ON auth_magic_links(email,created_at);
 
@@ -42,3 +44,5 @@ CREATE UNIQUE INDEX reminder_unsubscribe_hash ON prediction_reminder_log(unsubsc
 CREATE UNIQUE INDEX users_email_unique ON users(email) WHERE email IS NOT NULL;
 
 CREATE UNIQUE INDEX users_google_sub_unique ON users(google_sub) WHERE google_sub IS NOT NULL;
+
+CREATE INDEX guest_signups_ip ON guest_signups(ip_hash,created_at);
