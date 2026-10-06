@@ -1,0 +1,10 @@
+[Unit]
+Description=PredictionComp daily owner summary email
+After=network-online.target
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+ExecStart=/usr/bin/python3 /opt/predictioncomp/bin/daily_summary.py
+TimeoutStartSec=120
+UMask=0007

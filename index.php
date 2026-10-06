@@ -175,20 +175,9 @@ if(isset($_GET['api'])){
   $id=(int)($in['fixture_id']??0);$h=max(0,min(15,(int)($in['home']??0)));$a=max(0,min(15,(int)($in['away']??0)));
   $f=$db->prepare("SELECT kickoff_utc FROM fixtures WHERE id=?");$f->execute([$id]);$kick=$f->fetchColumn();
   if(!$kick||strtotime($kick)<=time()){http_response_code(409);echo json_encode(['ok'=>false,'error'=>'Prediction locked']);exit;}
-  $playerState=$db->prepare('SELECT display_name,email,COALESCE(is_bot,0) is_bot,play_alert_sent_at FROM users WHERE id=?');$playerState->execute([$uid]);$player=$playerState->fetch(PDO::FETCH_ASSOC)?:[];
-  $prior=$db->prepare('SELECT COUNT(*) FROM predictions WHERE user_id=?');$prior->execute([$uid]);
-  $isFirstPlay=((int)($player['is_bot']??0)===0 && empty($player['play_alert_sent_at']) && (int)$prior->fetchColumn()===0);
   $s=$db->prepare("INSERT INTO predictions(user_id,fixture_id,home_score,away_score) VALUES(?,?,?,?) ON CONFLICT(user_id,fixture_id) DO UPDATE SET home_score=excluded.home_score,away_score=excluded.away_score,saved_at=CURRENT_TIMESTAMP");$s->execute([$uid,$id,$h,$a]);
-  if($isFirstPlay){
-   $db->prepare('UPDATE users SET first_played_at=COALESCE(first_played_at,CURRENT_TIMESTAMP) WHERE id=?')->execute([$uid]);
-   $identity=!empty($player['email'])?(string)$player['email']:'Guest player';
-   $subject='New player on PredictionComp';
-   $body="A new player has made their first PredictionComp prediction.\n\nDisplay name: ".(string)($player['display_name']??'Unknown')."\nAccount: ".$identity."\nFirst prediction: ".$h."-".$a."\nTime: ".date('d M Y H:i')." UK\n\nAdmin: https://predictioncomp.com/admin.php";
-   $headers=["From: PredictionComp <admin@predictioncomp.com>","Reply-To: admin@predictioncomp.com","Content-Type: text/plain; charset=UTF-8"];
-   if(@mail('pete@salsbury.co.uk',$subject,$body,implode("\r\n",$headers))){
-    $db->prepare('UPDATE users SET play_alert_sent_at=CURRENT_TIMESTAMP WHERE id=?')->execute([$uid]);
-   }
-  }
+  // New players are reported in the daily owner summary (bin/daily_summary.py), not one email each.
+  $db->prepare('UPDATE users SET first_played_at=CURRENT_TIMESTAMP WHERE id=? AND first_played_at IS NULL')->execute([$uid]);
   echo json_encode(['ok'=>true]);exit;
  }
  if($_GET['api']==='profile'){if($uid<1){http_response_code(401);echo json_encode(['ok'=>false,'error'=>'Sign in to update your account']);exit;}$reminders=array_key_exists('reminders',$in)?(!empty($in['reminders'])?1:0):(int)($user['prediction_reminders']??0);$lead=(int)($in['reminder_lead_hours']??$user['reminder_lead_hours']??24);if(!in_array($lead,[2,24],true)){$lead=24;}if($reminders&&(empty($user['email'])||(empty($user['email_verified_at'])&&empty($user['google_sub']))||!empty($user['is_bot']))){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'Sign in with Google or a verified email to enable reminders']);exit;}$n=trim((string)($in['name']??''));$club=trim((string)($in['club']??''));$clubs=$premierLeagueClubs;if(strlen($n)<2||strlen($n)>24||($club!==''&&!in_array($club,$clubs,true))){http_response_code(400);echo json_encode(['ok'=>false]);exit;}if($n!==(string)$user['display_name']&&($nameError=pc_display_name_error($db,$n,$uid))){http_response_code($nameError[0]);echo json_encode(['ok'=>false,'error'=>$nameError[1]]);exit;}$s=$db->prepare('UPDATE users SET display_name=?,supported_club=?,prediction_reminders=?,reminder_lead_hours=? WHERE id=?');$s->execute([$n,$club,$reminders,$lead,$uid]);echo json_encode(['ok'=>true]);exit;}
