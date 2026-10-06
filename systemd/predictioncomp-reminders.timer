@@ -1,0 +1,9 @@
+[Unit]
+Description=Check opted-in PredictionComp reminders every 15 minutes
+[Timer]
+OnCalendar=*-*-* *:00,15,30,45:00
+Persistent=true
+AccuracySec=30s
+RandomizedDelaySec=15s
+[Install]
+WantedBy=timers.target
