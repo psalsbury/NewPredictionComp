@@ -254,7 +254,7 @@ require __DIR__.'/matchweek.php';
 $matchweek=matchweekSummary($db,$pred,time());
 $historyStmt=$db->prepare("SELECT f.round,f.kickoff_utc,f.home,f.away,f.home_score actual_home,f.away_score actual_away,f.status,p.home_score predicted_home,p.away_score predicted_away,COALESCE(p.points,0) points
  FROM predictions p JOIN fixtures f ON f.id=p.fixture_id
- WHERE p.user_id=? AND f.kickoff_utc<=datetime('now') AND COALESCE(f.status,'')<>'SIM'
+ WHERE p.user_id=? AND julianday(f.kickoff_utc)<=julianday('now') AND COALESCE(f.status,'')<>'SIM'
  ORDER BY f.kickoff_utc DESC LIMIT 100");
 $historyStmt->execute([$uid]);$predictionHistory=$historyStmt->fetchAll(PDO::FETCH_ASSOC);
 $ukNow=new DateTimeImmutable('now',new DateTimeZone('Europe/London'));
