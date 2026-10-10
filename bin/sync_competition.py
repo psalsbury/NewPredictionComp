@@ -123,6 +123,34 @@ def fallback_results(c):
       (int(row['FTHG']),int(row['FTAG']),fid))
     updated+=c.execute('SELECT changes()').fetchone()[0]
   return updated
+def scoreboard_results(c):
+ # Poll only dates with unresolved matches old enough to have finished.
+ dates=[r[0] for r in c.execute("""SELECT DISTINCT substr(kickoff_utc,1,10) FROM fixtures
+  WHERE julianday(kickoff_utc)<=julianday('now','-105 minutes')
+  AND julianday(kickoff_utc)>=julianday('now','-7 days')
+  AND COALESCE(status,'NS') NOT IN ('FT','AET','PEN','PST','CANC','ABD','AWD','WO')
+  ORDER BY 1""")]
+ updated=0
+ for date in dates:
+  url='https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard?'+urllib.parse.urlencode({'dates':date.replace('-',''),'limit':100})
+  with urllib.request.urlopen(url,timeout=20) as response: data=json.load(response)
+  for event in data.get('events',[]):
+   for competition in event.get('competitions',[]):
+    status=competition.get('status',event.get('status',{})).get('type',{})
+    if status.get('completed') is not True or status.get('name')!='STATUS_FULL_TIME': continue
+    teams={x.get('homeAway'):x for x in competition.get('competitors',[])}
+    if 'home' not in teams or 'away' not in teams: continue
+    home,away=teams['home'],teams['away']
+    hs,aws=str(home.get('score','')),str(away.get('score',''))
+    if not hs.isdigit() or not aws.isdigit(): continue
+    fid=matching(c,home['team']['displayName'],away['team']['displayName'],event.get('date','')[:10])
+    if fid is None: continue
+    c.execute("""UPDATE fixtures SET home_score=?,away_score=?,status='FT',updated_at=CURRENT_TIMESTAMP
+     WHERE id=? AND status NOT IN ('FT','AET','PEN','PST','CANC','ABD','AWD','WO')
+     AND julianday(kickoff_utc)<=julianday('now','-105 minutes')""",(int(hs),int(aws),fid))
+    updated+=c.execute('SELECT changes()').fetchone()[0]
+ return updated
+
 def score(c):
  for fid,h,a in c.execute("SELECT id,home_score,away_score FROM fixtures WHERE status IN ('FT','AET','PEN') AND home_score IS NOT NULL AND away_score IS NOT NULL").fetchall():
   for pid,ph,pa in c.execute('SELECT id,home_score,away_score FROM predictions WHERE fixture_id=?',(fid,)).fetchall():
@@ -177,7 +205,7 @@ def run_sync():
  # Fixed fixture seeds removed; source failures retain existing stored fixtures.
  marks=','.join('?' for _ in TERMINAL)
  sql=f"""SELECT external_id FROM fixtures WHERE external_id IS NOT NULL
-  AND kickoff_utc<=datetime('now','-105 minutes') AND kickoff_utc>=datetime('now','-24 hours')
+  AND julianday(kickoff_utc)<=julianday('now','-105 minutes') AND julianday(kickoff_utc)>=julianday('now','-24 hours')
   AND COALESCE(status,'NS') NOT IN ({marks})"""
  ids=[str(r[0]) for r in c.execute(sql,tuple(TERMINAL)).fetchall() if r[0]<900000000]
  if ids:
@@ -189,6 +217,10 @@ def run_sync():
   results=fallback_results(c)
   c.execute("INSERT INTO sync_meta(key,value) VALUES('results_checked',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(datetime.now(timezone.utc).isoformat(),))
  except (OSError,ValueError) as exc: print('results_fallback_unavailable',str(exc)[:200])
+ try:
+  fast_results=scoreboard_results(c)
+  print('scoreboard_results_updated',fast_results)
+ except (OSError,ValueError,KeyError,TypeError) as exc: print('scoreboard_results_unavailable',str(exc)[:200])
  score(c);c.commit()
  load_catalog(c,force=night_due or bool(up))
  print('upcoming_refreshed',up,'official_round_seeded',seeded,'results_polled',polled,'csv_results_updated',results)
