@@ -290,3 +290,15 @@ body>footer a{color:var(--text-2)}
 .weekreview{margin-top:22px;border-color:var(--gold-line)}
 .fixture .date .previewlink{color:var(--text-3);font-size:12px;font-weight:600;text-decoration:none}
 .fixture .date .previewlink:hover{color:var(--gold);text-decoration:underline}
+
+/* Final scores alongside the player's saved prediction. */
+#predict .frontresult{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;width:100%;text-align:center}
+#predict .frontresult small{display:block;font-size:10px;line-height:1.3}
+#predict .frontresult b{display:block;font:700 22px/1.2 var(--display)}
+#predict .frontpick{padding:5px 2px;border-radius:7px;border:1px solid var(--line);color:var(--text-2)}
+#predict .frontactual{padding:6px 2px;color:var(--text)}
+#predict .frontactual small{color:var(--text-3)}
+#predict .frontresult.exact .frontpick{color:var(--green);background:rgba(52,211,153,.1);border-color:var(--green)}
+#predict .frontresult.correct .frontpick{color:var(--amber);background:rgba(251,191,36,.1);border-color:var(--amber)}
+#predict .frontresult.wrong .frontpick{color:var(--red);background:rgba(248,113,113,.1);border-color:var(--red)}
+#predict .frontoutcome{grid-column:1/-1;color:var(--text-2);font-size:10px}
