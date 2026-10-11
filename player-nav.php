@@ -10,7 +10,7 @@ function playerNavigation(bool $home=false):void {
 }
 
 function footballMenu(string $class=''):string {
- return '<details class="footballmenu '.$class.'"><summary>Football <span aria-hidden="true">⌄</span></summary><div class="footballitems"><a href="/table">Premier League table</a><a href="/fixtures">Fixtures &amp; results</a><a href="/clubs">Clubs</a><a href="/prediction-guides">Prediction guides</a><a href="/how-it-works">How it works</a></div></details>';
+ return '<details class="footballmenu '.$class.'"><summary>Football <span aria-hidden="true">⌄</span></summary><div class="footballitems"><a href="/table">Premier League table</a><a href="/fixtures">Fixtures</a><a href="/results">Results</a><a href="/clubs">Clubs</a><a href="/prediction-guides">Prediction guides</a><a href="/how-it-works">How it works</a></div></details>';
 }
 
 function siteHeaderNavigation(string $accountLabel='Account'):void {
