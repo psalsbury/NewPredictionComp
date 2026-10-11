@@ -14,7 +14,7 @@ RewriteRule ^(.+)/$ https://predictioncomp.com/$1 [R=301,L]
 # Old static copy of the homepage.
 RewriteRule ^p\.html$ https://predictioncomp.com/ [R=301,L]
 RewriteRule ^my-results/?$ player-page.php?screen=results [L]
-RewriteRule ^leagues/?$ player-page.php?screen=leagues [L]
+RewriteRule ^leagues/?$ player-page.php?screen=leagues [L,QSA]
 RewriteRule ^account/?$ player-page.php?screen=account [L]
 RewriteRule ^table/?$ public.php?kind=table [L,QSA]
 RewriteRule ^prediction-guides/?$ public.php?kind=guides [L,QSA]
