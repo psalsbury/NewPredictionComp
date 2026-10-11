@@ -75,4 +75,4 @@ a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid #8c
 
 @media(max-width:720px){.standings .extended,.standings .formcol{display:none}.standings th,.standings td{padding:10px 5px}.standalonepanel .leagueitem{display:flex;flex-wrap:wrap}.standalonepanel .leagueitem>div:first-child{flex:1 1 130px}.standalonepanel .leagueitem button{min-height:44px}}
 /* Keep every Football option equally readable across desktop and mobile. */
-.footballmenu .footballitems a,.footballmenu .footballitems a:visited,.footballmenu .footballitems a:hover,.footballmenu .footballitems a:focus-visible,.playernav .footballmenu .footballitems a{color:var(--text,#eef5f8);opacity:1}
+.footballmenu.footballmenu .footballitems a,.footballmenu .footballitems a:visited,.footballmenu .footballitems a:hover,.footballmenu .footballitems a:focus-visible,.playernav .footballmenu .footballitems a{color:var(--text,#eef5f8);opacity:1}
