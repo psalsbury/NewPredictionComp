@@ -9,7 +9,7 @@ if($uid<1&&$view!=='leagues')$target='authDialog';
 $found=false;
 $html=preg_replace_callback('/<dialog id="'.$target.'">(.*?)<\/dialog>/s',function($m)use(&$found,$view){$found=true;$body=preg_replace('/<button[^>]*class="closex"[^>]*>.*?<\/button>/s','<a class="pageback" href="/#predict">← Predictions</a>',$m[1],1);if(in_array($view,['results','leagues'],true)){$body=preg_replace('/<a class="pageback"[^>]*>.*?<\/a>/s','',$body,1);$body=preg_replace('/<div class="sectionlabel">.*?<\/div>/s','',$body,1);$body=preg_replace('/<h2>(.*?)<\/h2>/s','<h1 class="playerpagetitle">$1</h1>',$body,1);}return '<section id="'.htmlspecialchars($GLOBALS['target']).'" class="standalonepanel">'.$body.'</section>';},$html);
 if(!$found){http_response_code(500);exit('Could not load page');}
-$title=['results'=>'My Results','leagues'=>'Leagues','account'=>'Account'][$view];
+$title=['results'=>'My results','leagues'=>'My leagues','account'=>'Account'][$view];
 $html=preg_replace('/<title>.*?<\/title>/s','<title>'.$title.' | PredictionComp</title>',$html,1);
 $html=preg_replace('/<link rel="canonical"[^>]*>/','<link rel="canonical" href="https://predictioncomp.com/'.($view==='results'?'my-results':$view).'">',$html,1);
 $html=preg_replace('/<meta name="robots"[^>]*>/','<meta name="robots" content="noindex,follow">',$html,1);
@@ -32,12 +32,17 @@ if(in_array($view,['results','leagues'],true))$css.='<style>
 @media(max-width:720px){.main{padding:24px 16px 30px;margin:0 auto}.standalonepanel .profilemodal{padding:0}.playerpagetitle{font-size:28px}.standalonepanel .leagueactions{grid-template-columns:1fr;gap:16px}.standalonepanel .leagueitem{padding:14px}.standalonepanel .performancegrid{gap:10px}}
 </style>';
 if($view==='account')$css.='<style>#profileDialog.standalonepanel .profilemodal{max-height:none;overflow:visible;padding-top:24px}.standalonepanel .accountheading{padding-right:0;align-items:center}.standalonepanel .accountheading h2{font-size:26px;line-height:1.2;margin:0}.standalonepanel .accountheading .accountsignout{flex-shrink:0}@media(max-width:720px){.standalonepanel .accountheading h2{font-size:23px}}</style>';
+if($view==='leagues'&&($selectedLeagueId||isset($_GET['global']))){
+ $css.='<style>.main>aside{display:block}.main>#leaguesDialog{display:none}.main>aside>.promo{display:none}.main>aside>#leader{border:0;background:transparent}.main>aside>#leader>.head{display:block;padding:0 0 18px}.main>aside>#leader>.side{padding:0}.flowhome{display:none!important}</style>';
+ $html=str_replace('<h2>'.htmlspecialchars($selectedLeague?$selectedLeague['name']:'Global league').'</h2>','<p><a href="/leagues">← My leagues</a></p><h1>'.htmlspecialchars($selectedLeague?$selectedLeague['name']:'Overall competition').'</h1>',$html);
+}
 $html=str_replace('</head>',$css.'</head>',$html);
 if($view==='results'&&$uid>0)$html=str_replace('<div class="resulttabs"',dataFreshnessHtml($db).'<div class="resulttabs"',$html);
 $script='<script>selectPlayerTab('.json_encode($view).');';
-if($view==='results'&&$uid>0)$script.="showResultsTab('performance');";
+if($view==='results'&&$uid>0)$script.="showResultsTab('matches');";
 if($target==='leaguesDialog')$script.='function closeLeagues(){}function openLeagues(){document.getElementById("leaguesDialog").scrollIntoView({block:"start"});selectPlayerTab("leagues")}';
 $script.='document.querySelectorAll(".playernav a").forEach(a=>a.removeAttribute("onclick"));';
+if($view==='leagues'&&($selectedLeagueId||isset($_GET['global'])))$script.='document.querySelectorAll("#leader button.leagueviewbtn").forEach(b=>{b.textContent="Manage league"});';
 $script.='</script>';
 $html=str_replace('</body>',$script.'</body>',$html);
 echo $html;
