@@ -9,7 +9,7 @@ echo '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL.'<urlset xmlns="http://www
 /* lastmod: data pages change when fixtures sync; info pages when info.php changes. */
 function url(string $path,?string $date):void{echo '<url><loc>https://predictioncomp.com'.xml($path).'</loc>'.($date?'<lastmod>'.xml(substr($date,0,10)).'</lastmod>':'').'</url>';}
 $latest=(string)$db->query('SELECT MAX(updated_at) FROM fixtures')->fetchColumn();$infoDate=date('Y-m-d',(int)filemtime(__DIR__.'/info.php'));
-foreach(['/','/clubs','/fixtures','/table','/prediction-guides'] as $path)url($path,$latest);
+foreach(['/','/clubs','/fixtures','/results','/table','/prediction-guides'] as $path)url($path,$latest);
 foreach(['/about','/beat-the-bots','/how-it-works','/privacy','/contact'] as $path)url($path,$infoDate);
 $clubDates=[];foreach($db->query('SELECT home,away,updated_at FROM fixtures') as $r)foreach([$r['home'],$r['away']] as $t){$t=pcClubName($t,$db);if(($clubDates[$t]??'')<$r['updated_at'])$clubDates[$t]=$r['updated_at'];}
 foreach(pcSeasonClubs($db) as $team)url('/clubs/'.slug($team),$clubDates[$team]??null);
