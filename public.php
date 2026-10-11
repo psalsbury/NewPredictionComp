@@ -73,9 +73,9 @@ function fixtureRows($rows){
  foreach($rows as $f){
   $kick=(new DateTimeImmutable($f['kickoff_utc'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('Europe/London'));
   if($day!==$kick->format('Y-m-d')){
-   if($day!==null)echo '</div></section>';
+   if($day!==null)echo '</div></details>';
    $day=$kick->format('Y-m-d');
-   echo '<section class="matchday"><h2 class="matchday-heading"><time datetime="'.e($day).'">'.e($kick->format('l j M Y')).'</time></h2><div class="matchday-games">';
+   echo '<details class="matchday datefold" open><summary class="matchday-heading"><time datetime="'.e($day).'">'.e($kick->format('l j M Y')).'</time><span class="foldhint">Hide matches</span></summary><div class="matchday-games">';
   }
   $done=in_array($f['status'],['FT','AET','PEN'],true)&&$f['home_score']!==null&&$f['away_score']!==null;
   $status=fixtureStatusLabel($f);
@@ -89,7 +89,7 @@ function fixtureRows($rows){
   if($label!=='')echo '<small>'.e($label).'</small>';
   echo '</span><span class="matchrow-arrow" aria-hidden="true">›</span></a>';
  }
- if($day!==null)echo '</div></section>';
+ if($day!==null)echo '</div></details>';
 }
 ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?=e($title)?> | PredictionComp</title><meta name="description" content="<?=e($description)?>"><meta name="robots" content="<?=$kind==='missing'||($kind==='guide'&&($_GET['week']??'')>date('Y-m-d',strtotime('+14 days')))?'noindex,follow':'index,follow'?>"><link rel="canonical" href="https://predictioncomp.com<?=e($path)?>"><meta property="og:title" content="<?=e($title)?> | PredictionComp"><meta property="og:description" content="<?=e($description)?>"><meta property="og:url" content="https://predictioncomp.com<?=e($path)?>"><meta property="og:type" content="website"><meta property="og:site_name" content="PredictionComp"><meta property="og:image" content="https://predictioncomp.com/assets/og-image.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="PredictionComp: free Premier League prediction game"><meta name="twitter:card" content="summary_large_image"><script type="application/ld+json"><?=json_encode(['@context'=>'https://schema.org','@type'=>'BreadcrumbList','itemListElement'=>[['@type'=>'ListItem','position'=>1,'name'=>'PredictionComp','item'=>'https://predictioncomp.com/'],['@type'=>'ListItem','position'=>2,'name'=>$title,'item'=>'https://predictioncomp.com'.$path]]],JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_SLASHES)?></script><?php if($kind==='match'&&$match):
 // Prediction previews and result reviews are web pages, not event attendance listings.
@@ -114,6 +114,16 @@ body>main a.matchrow:hover,body>main a.matchrow:focus-visible{background:var(--i
 .matchrow-score{display:grid;gap:10px;font-size:22px;line-height:34px;text-align:center}
 .matchrow-arrow{font-size:26px;color:var(--text-3)}
 @media(max-width:650px){body>main a.matchrow{gap:10px;padding:14px 12px}.matchrow-team{font-size:18px;gap:10px}.matchrow-summary{min-width:48px}.matchrow-summary time{font-size:19px}body>main .matchday-heading{font-size:18px}.matchrow-summary small{max-width:75px}.matchrow-team span{overflow-wrap:break-word}}
+</style><style>
+.datefold>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:12px}
+.datefold>summary::-webkit-details-marker{display:none}
+.datefold>summary:before{content:"▾";display:inline-block;font-size:18px}
+.datefold:not([open])>summary:before{content:"▸"}
+.datefold>summary:focus-visible{outline:2px solid var(--gold,#77eaa5);outline-offset:-2px}
+.datefold>summary .foldhint{margin-left:auto;font:500 12px system-ui;opacity:.75}
+.datefold:not([open])>summary .foldhint{font-size:0}
+.datefold:not([open])>summary .foldhint:after{content:"Show matches";font:500 12px system-ui}
+.predictionday>.fixtureday{margin:0;padding:14px 16px}
 </style></head><body><header class="siteheader"><?php siteHeaderNavigation();?></header><main><p class="note"><a href="/">PredictionComp</a> / <?=e($title)?></p><h1 class="<?=in_array($kind,['fixtures','results'],true)?'fixtures-title':''?>"><?=$kind==='fixtures'?'Fixtures':($kind==='results'?'Results':e($title))?></h1><?php if($kind!=='missing')echo dataFreshnessHtml($db);?>
 <?php if($kind==='clubs'):?><p>Follow a club’s upcoming matches, check its recent results and test your score predictions against five levels of bot opponents. Choose your club below.</p><div class="grid"><?php foreach($teams as $t):?><a class="club" href="/clubs/<?=e(slug($t))?>"><img src="/club-logo.php?team=<?=urlencode($t)?>" alt="" width="34" height="34" loading="lazy"><?=e($t)?></a><?php endforeach;?></div>
 <?php elseif($kind==='club'):?><?php if($clubSummary):?><p class="lede"><?=e($clubSummary)?></p><?php endif;?><p>Plan your <?=e($club)?> predictions using the upcoming fixtures and the latest completed results in our database. Predictions can be changed until kick-off: an exact score earns 5 points, and the correct win, draw or loss earns 3.</p><a class="cta" href="/#predict">Make your predictions</a><h2>Recent form</h2><?php if(!$recent):?><p>No completed results available yet.</p><?php else:?><p><?=e(formSummary($recent,$club))?></p><div class="formrow"><?php foreach(array_reverse($recent) as $f):$ours=pcClubName($f['home'],$db)===$club?$f['home_score']:$f['away_score'];$theirs=pcClubName($f['home'],$db)===$club?$f['away_score']:$f['home_score'];$r=$ours>$theirs?'W':($ours<$theirs?'L':'D');?><a class="badge <?=$r==='L'?'loss':($r==='D'?'draw':'')?>" href="<?=matchLink($f)?>" aria-label="<?=e($r.' '.$f['home'].' '.$f['home_score'].'–'.$f['away_score'].' '.$f['away'])?>"><?=$r?></a><?php endforeach;?></div><p class="note">Oldest to newest · W win, D draw, L loss. Based on the last five completed league matches in our database.</p><?php fixtureRows($recent);?><?php endif;?><h2>Upcoming fixtures</h2><?php fixtureRows($rows);?>
