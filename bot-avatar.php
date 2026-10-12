@@ -1,9 +1,9 @@
 <?php
-declare(strict_types=1);
+declare(strict_types=1); require_once __DIR__.'/inc/config.php';
 header('Content-Type: image/svg+xml; charset=UTF-8');
 header('Cache-Control: public, max-age=86400');
 $id=max(0,(int)($_GET['id']??0));
-$db=new PDO('sqlite:/var/lib/predictioncomp/predictioncomp.sqlite');
+$db=new PDO('sqlite:'.pc_db_path());
 $q=$db->prepare('SELECT display_name,COALESCE(bot_grade,5) grade FROM users WHERE id=? AND is_bot=1');
 $q->execute([$id]);$bot=$q->fetch(PDO::FETCH_ASSOC);
 if(!$bot){http_response_code(404);exit;}

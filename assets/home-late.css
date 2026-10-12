@@ -1,0 +1,30 @@
+.datefold>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:12px}
+.datefold>summary::-webkit-details-marker{display:none}
+.datefold>summary:before{content:"▾";display:inline-block;font-size:18px}
+.datefold:not([open])>summary:before{content:"▸"}
+.datefold>summary:focus-visible{outline:2px solid var(--gold,#77eaa5);outline-offset:-2px}
+.datefold>summary .foldhint{margin-left:auto;font:500 12px system-ui;opacity:.75}
+.datefold:not([open])>summary .foldhint{font-size:0}
+.datefold:not([open])>summary .foldhint:after{content:"Show matches";font:500 12px system-ui}
+.predictionday>.fixtureday{margin:0;padding:14px 16px}
+/* Visitors: the next three open matches, then "Show all". */
+.fewfixtures .fixture.extra{display:none}
+.fewfixtures details.predictionday:not(:has(.fixture:not(.extra))){display:none}
+.showallfixtures{display:none}
+.fewfixtures .showallfixtures{display:block;width:calc(100% - 36px);margin:14px 18px 4px;min-height:46px;border:1px solid var(--gold-line,#5c4a1a);border-radius:var(--radius-sm,10px);background:var(--gold-soft,rgba(244,197,66,.09));color:var(--text,#eef2f7);font:600 16px var(--font,system-ui);cursor:pointer}
+.fewfixtures .showallfixtures:hover{border-color:var(--gold,#f4c542)}
+/* First save: start a league and share it. */
+.firstsaved.challenge p{margin:6px 0 12px;line-height:1.5}
+.challengeform label{display:block;font-size:13px;margin-bottom:6px;color:#bfe9cf}
+.challengeform div{display:flex;flex-wrap:wrap;gap:8px}
+.challengeform input{flex:1 1 200px;min-height:44px;padding:8px 12px;border:1px solid #4b9364;border-radius:8px;background:#0e2a1f;color:#eef5f8;font:inherit}
+.challengeform .btn{min-height:44px}
+.challengeshare div{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.challengeshare p{margin:0 0 10px}
+.firstsaved .challengepage{margin:0 6px}
+.challengemessage:empty{display:none}
+.sharebtn{display:inline-flex;align-items:center;min-height:44px;padding:10px 16px;border:1px solid #4b9364;border-radius:8px;background:#0e2a1f;color:#eef5f8;font:600 15px var(--font,system-ui);cursor:pointer;text-decoration:none}
+.firstsaved a.sharebtn{margin:0;color:#fff}
+.sharebtn.whatsapp{background:#1f7a4b;border-color:#25a463;color:#fff}
+.copybtn.whatsappbtn{background:#1f7a4b;border-color:#25a463;color:#fff}
+a.copybtn{text-decoration:none;display:inline-block;font-size:13.3333px;line-height:normal;font-weight:800;color:#eef5f8}

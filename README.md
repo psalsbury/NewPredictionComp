@@ -14,7 +14,7 @@ The profile dropdown, club pages, standings, badges, sitemap and bots use this c
 
 Visitors can predict without registering. The first save opens a dialog where they confirm a suggested display name or type their own; that commitment turns their browser token into a player (`users.guest_since` set, no email). Guest sign-ups are limited to 8 an hour and 30 a day per IP (`guest_signups`).
 
-To keep drive-by players off the global table, a guest is only listed once they have predicted in two different matchweeks (Friday to Thursday) or added an email. Until then only the guest sees their own row, tagged "Only you". Players created before guest play are unaffected. Friends leagues still need an email.
+To keep drive-by players off the global table, a guest is only listed once they have predicted in two different matchweeks (Friday to Thursday) or added an email. Until then only the guest sees their own row, tagged "Only you". Players created before guest play are unaffected. Guests can create and join friends leagues; managing bots in a league needs an email.
 
 ## Prediction reminders
 
@@ -33,7 +33,42 @@ To keep drive-by players off the global table, a guest is only listed once they 
 - Match, club and weekly guide pages use plain-English form summaries and key numbers (`seo-content.php`). Finished weeks get a "Week in review" built from game data: hardest and easiest calls, exact scores and top scorers (bots are labelled).
 - Match titles target "X v Y prediction & preview" before kick-off and "X 2–1 Y: result & prediction review" afterwards.
 - Every page has Open Graph and Twitter tags with `assets/og-image.png`. The homepage carries WebSite, Organization and WebApplication structured data, and match pages carry SportsEvent.
-- `sitemap.php` gives each URL a `lastmod` from fixture sync times (`info.php` mtime for static pages). `/p.html` (an old static homepage copy) 301-redirects to `/`.
+- `/sitemap.xml` is served by `sitemap.php` (rewrite in `.htaccess`; there is no static file). It gives each URL a `lastmod` from fixture sync times (`info.php` mtime for static pages). `/p.html` (an old static homepage copy) 301-redirects to `/`.
+
+## Code layout
+
+`index.php` is a short front controller for the homepage and the JSON API (`/?api=<action>`). It loads, in order:
+
+- `inc/config.php`: database and club-cache paths. `PREDICTIONCOMP_DB` and `PREDICTIONCOMP_CLUB_CACHE` override them, so the site can run against a test database (`php -S` with a small router that mirrors `.htaccess`).
+- `inc/home-bootstrap.php`: session, the current player from the `pc_token` cookie, account merging and invite helpers. `inc/listing.php` holds `pc_listed_sql()`, the rule for who appears on the global table, shared with `public.php`.
+- `inc/home-auth.php`: invite links and sign-in routes (Google, email links, sign-out).
+- `inc/home-api.php`: the JSON API.
+- `inc/home-data.php`: queries for the homepage.
+- `templates/home.php`: homepage markup. Styles are in `assets/home.css` (before `theme.css`) and `assets/home-late.css` (after it); behaviour is in `assets/home.js` and `assets/home-guest.js`. Per-page values (CSRF token, matchweek, picks, leagues) reach the scripts as `window.PC`. Bump the `?v=` on these links after editing them.
+
+`inc/` and `templates/` are denied to the web by their own `.htaccess`. `player-page.php` (`/my-results`, `/leagues`, `/account`) renders the homepage and reshapes one dialog into a page, so it picks up homepage changes automatically.
+
+Google's sign-in script is loaded on demand (when the sign-in dialog opens, or on the standalone sign-in page), not on every visit.
+
+## Bots as content
+
+`bot-insights.php` (used by `public.php`, styled by `assets/public-extras.css`):
+
+- **What the bots predict** on match pages: result split and most-picked scores from all bots. Before kick-off SIM1 shows only its lean on the result; its exact scores appear once the match locks, so nobody can copy the strongest bots. After full time it shows average points by SIM level and the real-player average (3+ predictions).
+- **Bot consensus** line on each weekly guide card.
+- **Can you beat SIM1?** on weekly guides and `/table` (latest week with a finished match): the best SIM1 bot's points against real players. Guests who aren't on the global table yet are counted but not named.
+
+The bot section of "Player prediction insights" was folded into the new panel; that block now covers real players only.
+
+## Friends leagues
+
+- After a first save, the homepage offers to create a league on the spot and share it (WhatsApp, copy link, native share). Players who are already in a league get its share links instead.
+- Invite links stay `/?invite=CODE`. Following one now lands on the predictions (`/?joined_league=1&league=ID#predict`) with the league table alongside, instead of on `/leagues`.
+- `/league/CODE` is a read-only league page for anyone with the code (`noindex,nofollow`, not in the sitemap): table, this week's pick progress (counts only until kick-off), picks for matches that have kicked off, and this week against SIM1.
+
+## Homepage for first-time visitors
+
+A visitor on a plain `/` (no query string) sees the next three open matches and a "Show all N matches" button. The full list opens as soon as they open the score picker. Deep links (`?fixture=`, `?invite=`, paging) always show everything.
 
 ## Deployment
 

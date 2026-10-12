@@ -1,5 +1,5 @@
 <?php
-declare(strict_types=1);
+declare(strict_types=1); require_once __DIR__.'/inc/config.php';
 /* Shared season-aware club metadata. File cache is also used by Python jobs. */
 function pcSeasonYear():int {
  $now=new DateTimeImmutable('now',new DateTimeZone('Europe/London'));
@@ -8,7 +8,7 @@ function pcSeasonYear():int {
 function pcClubCatalog(?PDO $db=null):array {
  static $catalog=null;
  if($catalog!==null)return $catalog;
- $path='/var/cache/predictioncomp/clubs.json';
+ $path=pc_cache_path();
  $read=function()use($path){$value=json_decode((string)@file_get_contents($path),true);return is_array($value)&&isset($value['clubs'],$value['aliases'],$value['seasons'],$value['generated_at'])?$value:null;};
  $cached=$read();
  if($cached&&time()-(int)$cached['generated_at']<21600)return $catalog=$cached;
@@ -16,7 +16,7 @@ function pcClubCatalog(?PDO $db=null):array {
  if($lock&&!flock($lock,LOCK_EX|LOCK_NB)){fclose($lock);if($cached)return $catalog=$cached;$lock=null;}
  try {
   $latest=$read();if($latest&&time()-(int)$latest['generated_at']<21600)return $catalog=$latest;
-  $db=$db??new PDO('sqlite:/var/lib/predictioncomp/predictioncomp.sqlite',null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+  $db=$db??new PDO('sqlite:'.pc_db_path(),null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
   $result=['generated_at'=>time(),'clubs'=>[],'aliases'=>[],'seasons'=>[]];
   foreach($db->query('SELECT name,badge FROM clubs') as $row){$result['clubs'][$row['name']]=['name'=>$row['name'],'badge'=>$row['badge']];$result['aliases'][strtolower($row['name'])]=$row['name'];}
   foreach($db->query('SELECT alias,club_name FROM club_aliases') as $row)$result['aliases'][$row['alias']]=$row['club_name'];

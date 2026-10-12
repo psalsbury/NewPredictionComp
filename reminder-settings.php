@@ -1,9 +1,9 @@
 <?php
-declare(strict_types=1);
+declare(strict_types=1); require_once __DIR__.'/inc/config.php';
 header('X-Robots-Tag: noindex, nofollow');
 header('Cache-Control: no-store');
 header('Referrer-Policy: no-referrer');
-$db=new PDO('sqlite:/var/lib/predictioncomp/predictioncomp.sqlite',null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+$db=new PDO('sqlite:'.pc_db_path(),null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
 $token=(string)($_POST['token']??$_GET['token']??'');$uid=0;$done=false;
 if(preg_match('/^[A-Za-z0-9_-]{40,100}$/',$token)){$q=$db->prepare('SELECT user_id FROM prediction_reminder_log WHERE unsubscribe_hash=?');$q->execute([hash('sha256',$token)]);$uid=(int)$q->fetchColumn();}
 if($uid&&$_SERVER['REQUEST_METHOD']==='POST'){$q=$db->prepare('UPDATE users SET prediction_reminders=0 WHERE id=?');$q->execute([$uid]);$done=true;}

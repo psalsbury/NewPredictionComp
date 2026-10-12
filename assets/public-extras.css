@@ -1,0 +1,44 @@
+/* Bot consensus, "Can you beat SIM1?" and public league pages (public.php). Uses the tokens from theme.css. */
+.botconsensus .simbadge,.beatsim1 .simbadge,.leaguetable .simbadge{margin:0 6px 0 0}
+.botsplit{display:flex;gap:3px;margin:14px 0;border-radius:var(--radius-sm);overflow:hidden;min-height:54px}
+.botsplit span{display:flex;flex-direction:column;justify-content:center;min-width:64px;padding:8px 10px;background:var(--ink-3)}
+.botsplit b{font:700 20px/1.1 var(--display)}
+.botsplit small{color:var(--text-2);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.botsplit .botsplit-home{background:var(--green-soft);border-left:3px solid var(--green)}
+.botsplit .botsplit-draw{background:var(--ink-3)}
+.botsplit .botsplit-away{background:var(--gold-soft);border-right:3px solid var(--gold);text-align:right}
+.botgrades{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:10px 0 14px}
+.botgrades div{display:grid;gap:2px;padding:10px 12px;background:var(--ink-2);border:1px solid var(--line-soft);border-radius:var(--radius-sm)}
+.botgrades b{font:700 24px/1.1 var(--display)}
+.botgrades small{color:var(--text-3);font-size:12px}
+.botline{color:var(--text-2);font-size:14px}
+.beatsim1{margin-top:22px}
+.beatlist{list-style:none;margin:12px 0 16px;padding:0;counter-reset:beat}
+.beatlist li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;grid-template-areas:"n name pts" "n diff pts";align-items:center;column-gap:10px;padding:9px 12px;border-bottom:1px solid var(--line-soft);counter-increment:beat}
+.beatlist li:before{content:counter(beat);grid-area:n;color:var(--text-3);font-weight:700}
+.beatlist li span{grid-area:name;overflow-wrap:anywhere}
+.beatlist li b{grid-area:pts;font:700 22px var(--display)}
+.beatlist li small{grid-area:diff;color:var(--text-3);font-size:12px}
+.beatlist li.beat{background:var(--green-soft);border-radius:8px}
+.beatlist li.beat small{color:var(--green)}
+.leaguecta{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:18px 0 24px}
+.sharebtn{display:inline-flex;align-items:center;min-height:44px;padding:10px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--ink-2);color:var(--text);font:600 15px var(--font);cursor:pointer;text-decoration:none}
+.sharebtn:hover{text-decoration:none;border-color:var(--gold-line)}
+.sharebtn.whatsapp{background:#1f7a4b;border-color:#25a463;color:#fff}
+.leaguetable td:nth-child(3),.leaguetable th:nth-child(3){color:var(--text-2)}
+.pickprogress{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+.pickprogress li{display:flex;justify-content:space-between;gap:10px;padding:9px 12px;background:var(--ink-2);border:1px solid var(--line-soft);border-radius:var(--radius-sm)}
+.pickprogress li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pickprogress li.done b{color:var(--green)}
+.pickgridwrap{overflow-x:auto;margin:10px 0;border:1px solid var(--line-soft);border-radius:var(--radius-sm)}
+.pickgrid{border-collapse:collapse;font-size:14px;min-width:100%}
+.pickgrid th,.pickgrid td{padding:8px 10px;border-bottom:1px solid var(--line-soft);text-align:center;white-space:nowrap}
+.pickgrid thead th{font-size:12px;font-weight:600;color:var(--text-2);line-height:1.35}
+.pickgrid thead th a{color:inherit}
+.pickgrid thead th b{color:var(--text);font-size:14px}
+.pickgrid tbody th{text-align:left;position:sticky;left:0;background:var(--ink-1);max-width:140px;overflow:hidden;text-overflow:ellipsis}
+.pickgrid td.exact,.note .exact{color:var(--green);font-weight:700}
+.pickgrid td.result,.note .result{color:var(--gold)}
+.pickgrid td.miss,.note .miss{color:var(--text-3)}
+.botgrades .simbadge{justify-self:start}
+.leaguetable th:nth-child(2),.leaguetable td:nth-child(2){text-align:left}.leaguetable td:nth-child(2) .simbadge{margin-left:6px}

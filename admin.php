@@ -1,10 +1,10 @@
 <?php
-declare(strict_types=1);
+declare(strict_types=1); require_once __DIR__.'/inc/config.php';
 date_default_timezone_set('Europe/London');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('X-Robots-Tag: noindex, nofollow', true);
 function h(mixed $v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
-$db=new PDO('sqlite:/var/lib/predictioncomp/predictioncomp.sqlite',null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+$db=new PDO('sqlite:'.pc_db_path(),null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
 $db->exec('PRAGMA busy_timeout=3000');
 $tz=new DateTimeZone('Europe/London');$utc=new DateTimeZone('UTC');$now=new DateTimeImmutable('now',$tz);
 $periods=[

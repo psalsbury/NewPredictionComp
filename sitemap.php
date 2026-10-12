@@ -1,7 +1,7 @@
 <?php
-declare(strict_types=1);
+declare(strict_types=1); require_once __DIR__.'/inc/config.php';
 header('Content-Type: application/xml; charset=UTF-8');
-$db=new PDO('sqlite:/var/lib/predictioncomp/predictioncomp.sqlite');
+$db=new PDO('sqlite:'.pc_db_path());
 require_once __DIR__.'/clubs.php';
 function xml($v){return htmlspecialchars((string)$v,ENT_XML1|ENT_QUOTES,'UTF-8');}
 function slug($v){return strtolower(trim(preg_replace('/[^a-z0-9]+/i','-',$v),'-'));}

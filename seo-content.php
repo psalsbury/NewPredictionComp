@@ -72,9 +72,10 @@ function weekReviewBlock(PDO $db,array $rows):void{
 }
 function weekKey(string $date):string{$d=(new DateTimeImmutable($date,new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('Europe/London'))->setTime(0,0);$offset=((int)$d->format('N')+2)%7;return $d->modify('-'.$offset.' days')->format('Y-m-d');}
 function insightBlock(PDO $db,array $match):void{
- echo '<section class="panel insights"><h2>Player prediction insights</h2>';
+ echo '<section class="panel insights"><h2>Real player predictions</h2>';
  if(strtotime($match['kickoff_utc'])>time()){echo '<p>Prediction trends will appear after kick-off. Players’ individual picks stay private until then.</p></section>';return;}
- foreach([0=>'Real players',1=>'Bot predictions'] as $bot=>$label){
+ // Bot picks have their own panel (botConsensusBlock in bot-insights.php).
+ foreach([0=>'Real players'] as $bot=>$label){
   $q=$db->prepare('SELECT p.home_score,p.away_score,COUNT(*) n FROM predictions p JOIN users u ON u.id=p.user_id WHERE p.fixture_id=? AND u.is_bot=? GROUP BY p.home_score,p.away_score ORDER BY n DESC,p.home_score,p.away_score');$q->execute([$match['id'],$bot]);$scores=$q->fetchAll(PDO::FETCH_ASSOC);$n=array_sum(array_column($scores,'n'));
   echo '<h3>'.e($label).'</h3>';
   if(($bot===0&&$n<5)||!$n){echo '<p>'.($bot===0?'Trends appear once at least five real players have predicted this match.':'No bot predictions recorded.').'</p>';continue;}
@@ -83,7 +84,7 @@ function insightBlock(PDO $db,array $match):void{
   $top=array_filter($scores,fn($r)=>(int)$r['n']===(int)$scores[0]['n']);$labels=[];foreach($top as $r)$labels[]=$r['home_score'].'–'.$r['away_score'];
   echo '<p>Most popular score'.(count($top)>1?'s (tied)':'').': <strong>'.e(implode(', ',$labels)).'</strong> · '.(int)$scores[0]['n'].' pick'.($scores[0]['n']==1?'':'s').' each.</p>';
  }
- echo '<p class="note">Counts are separated by player type. These are game predictions, not betting odds.</p></section>';
+ echo '<p class="note">Real players only. These are game predictions, not betting odds.</p></section>';
 }
 function previewBlock(PDO $db,array $match,bool $compact=false):void{
  $home=priorResults($db,$match['home'],$match['kickoff_utc']);$away=priorResults($db,$match['away'],$match['kickoff_utc']);
@@ -94,6 +95,6 @@ function previewBlock(PDO $db,array $match,bool $compact=false):void{
  echo '<h3>Previous meetings in our records</h3>';if($meetings)fixtureRows($meetings);else echo '<p>No earlier completed meeting is recorded for this season.</p>';
  }
  if(!$compact)echo '<p class="note">Summaries use up to five completed league matches in our records before this fixture. Missing results can limit the sample.</p>';
- if($compact){echo '<p>'.e(uk($match['kickoff_utc'])).' UK';if($match['home_score']!==null&&$match['away_score']!==null)echo ' · Result: '.e($match['home_score'].'–'.$match['away_score']);echo '</p><a href="'.matchLink($match).'" class="compactlink">Match details <span aria-hidden="true">→</span></a>';}
+ if($compact){echo '<p>'.e(uk($match['kickoff_utc'])).' UK';if($match['home_score']!==null&&$match['away_score']!==null)echo ' · Result: '.e($match['home_score'].'–'.$match['away_score']);echo '</p>';if(function_exists('botConsensusLine'))echo botConsensusLine($db,$match);echo '<a href="'.matchLink($match).'" class="compactlink">Match details <span aria-hidden="true">→</span></a>';}
  echo '</section>';
 }
