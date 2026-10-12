@@ -70,6 +70,13 @@ function weekReviewBlock(PDO $db,array $rows):void{
  }
  echo '</section>';
 }
+/** Fixtures in the Friday-to-Thursday UK week starting on $weekKey (from weekKey()), in kick-off order. */
+function pcWeekFixtures(PDO $db,string $weekKey):array{
+ $uk=new DateTimeZone('Europe/London');$utc=new DateTimeZone('UTC');$start=new DateTimeImmutable($weekKey,$uk);
+ $q=$db->prepare('SELECT * FROM fixtures WHERE julianday(kickoff_utc)>=julianday(?) AND julianday(kickoff_utc)<julianday(?) ORDER BY julianday(kickoff_utc),id');
+ $q->execute([$start->setTimezone($utc)->format('Y-m-d H:i:s'),$start->modify('+7 days')->setTimezone($utc)->format('Y-m-d H:i:s')]);
+ return $q->fetchAll(PDO::FETCH_ASSOC);
+}
 function weekKey(string $date):string{$d=(new DateTimeImmutable($date,new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('Europe/London'))->setTime(0,0);$offset=((int)$d->format('N')+2)%7;return $d->modify('-'.$offset.' days')->format('Y-m-d');}
 function insightBlock(PDO $db,array $match):void{
  echo '<section class="panel insights"><h2>Real player predictions</h2>';

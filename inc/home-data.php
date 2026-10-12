@@ -8,8 +8,20 @@ $fixtureCount=(int)$db->query("SELECT COUNT(*) FROM fixtures WHERE julianday(kic
 $fixturePage=min($fixturePage,max(0,(int)ceil($fixtureCount/10)-1));
 $fixtures=$db->query("SELECT * FROM fixtures WHERE julianday(kickoff_utc)>=julianday('now','-24 hours') ORDER BY julianday(kickoff_utc),id LIMIT 10 OFFSET ".($fixturePage*10))->fetchAll(PDO::FETCH_ASSOC);
 // First-time visitors on a plain homepage see the next three open matches; the rest are one tap away.
-$collapseFixtures=false;$fixtureExtra=[];
-if($uid<1&&!$_GET){$open=0;foreach($fixtures as $f){$isOpen=strtotime($f['kickoff_utc'])>time()&&!in_array($f['status'],['PST','CANC','ABD','SUSP','TBD'],true);$fixtureExtra[(int)$f['id']]=!$isOpen||$open++>=3;}$collapseFixtures=$open>3;if(!$collapseFixtures)$fixtureExtra=[];}
+// $dayExtra marks UK days whose matches are all hidden, so the template can hide the whole day without CSS :has().
+$collapseFixtures=false;$fixtureExtra=[];$dayExtra=[];$openFixtureCount=0;
+if($uid<1&&!$_GET){
+ foreach($fixtures as $f){
+  $isOpen=strtotime($f['kickoff_utc'])>time()&&!in_array($f['status'],['PST','CANC','ABD','SUSP','TBD'],true);
+  $extra=!$isOpen||$openFixtureCount>=3;if($isOpen)$openFixtureCount++;$fixtureExtra[(int)$f['id']]=$extra;
+  $day=(new DateTimeImmutable($f['kickoff_utc'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('Europe/London'))->format('Y-m-d');
+  $dayExtra[$day]=($dayExtra[$day]??true)&&$extra;
+ }
+ $collapseFixtures=$openFixtureCount>3;if(!$collapseFixtures){$fixtureExtra=[];$dayExtra=[];}
+}
+// After signing in from an invite, land on the predictions with the league alongside (same as the other invite routes).
+$afterSignIn='/?signed_in=1#predict';
+if(!empty($_SESSION['pending_league_code'])){$q=$db->prepare('SELECT id FROM leagues WHERE code=?');$q->execute([(string)$_SESSION['pending_league_code']]);$pendingLeagueId=(int)$q->fetchColumn();$afterSignIn=$pendingLeagueId?'/?joined_league=1&league='.$pendingLeagueId.'#predict':'/leagues';}
 $ps=$db->prepare('SELECT fixture_id,home_score,away_score FROM predictions WHERE user_id=?');$ps->execute([$uid]);$pred=[];foreach($ps as $p)$pred[$p['fixture_id']]=[$p['home_score'],$p['away_score']];
 require PC_ROOT.'/player-nav.php';
 require_once PC_ROOT.'/data-status.php';
@@ -21,7 +33,7 @@ $historyStmt=$db->prepare("SELECT f.round,f.kickoff_utc,f.home,f.away,f.home_sco
  ORDER BY f.kickoff_utc DESC LIMIT 100");
 $historyStmt->execute([$uid]);$predictionHistory=$historyStmt->fetchAll(PDO::FETCH_ASSOC);
 $ukNow=new DateTimeImmutable('now',new DateTimeZone('Europe/London'));
-$seasonYear=((int)$ukNow->format('n')>=7)?(int)$ukNow->format('Y'):(int)$ukNow->format('Y')-1;
+$seasonYear=pcSeasonYear();
 $seasonStart=new DateTimeImmutable($seasonYear.'-08-01 00:00:00',new DateTimeZone('Europe/London'));
 $seasonEnd=$seasonStart->modify('+10 months');
 require PC_ROOT.'/performance.php';

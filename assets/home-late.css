@@ -9,7 +9,7 @@
 .predictionday>.fixtureday{margin:0;padding:14px 16px}
 /* Visitors: the next three open matches, then "Show all". */
 .fewfixtures .fixture.extra{display:none}
-.fewfixtures details.predictionday:not(:has(.fixture:not(.extra))){display:none}
+.fewfixtures details.predictionday.extraday{display:none}
 .showallfixtures{display:none}
 .fewfixtures .showallfixtures{display:block;width:calc(100% - 36px);margin:14px 18px 4px;min-height:46px;border:1px solid var(--gold-line,#5c4a1a);border-radius:var(--radius-sm,10px);background:var(--gold-soft,rgba(244,197,66,.09));color:var(--text,#eef2f7);font:600 16px var(--font,system-ui);cursor:pointer}
 .fewfixtures .showallfixtures:hover{border-color:var(--gold,#f4c542)}

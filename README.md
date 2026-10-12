@@ -40,7 +40,7 @@ To keep drive-by players off the global table, a guest is only listed once they 
 `index.php` is a short front controller for the homepage and the JSON API (`/?api=<action>`). It loads, in order:
 
 - `inc/config.php`: database and club-cache paths. `PREDICTIONCOMP_DB` and `PREDICTIONCOMP_CLUB_CACHE` override them, so the site can run against a test database (`php -S` with a small router that mirrors `.htaccess`).
-- `inc/home-bootstrap.php`: session, the current player from the `pc_token` cookie, account merging and invite helpers. `inc/listing.php` holds `pc_listed_sql()`, the rule for who appears on the global table, shared with `public.php`.
+- `inc/home-bootstrap.php`: session, the current player from the `pc_token` cookie, account merging and invite helpers. `inc/listing.php` holds `pc_listed_sql()`, the rule for who appears on the global table, shared with `public.php`. `inc/league-share.php` holds the league invite URL and share wording; the homepage passes them to its JS as `PC.leagueShare` / `PC.inviteBase`, and `assets/share.js` (`copyText`) is the copy-to-clipboard helper for both pages.
 - `inc/home-auth.php`: invite links and sign-in routes (Google, email links, sign-out).
 - `inc/home-api.php`: the JSON API.
 - `inc/home-data.php`: queries for the homepage.
@@ -54,21 +54,24 @@ Google's sign-in script is loaded on demand (when the sign-in dialog opens, or o
 
 `bot-insights.php` (used by `public.php`, styled by `assets/public-extras.css`):
 
-- **What the bots predict** on match pages: result split and most-picked scores from all bots. Before kick-off SIM1 shows only its lean on the result; its exact scores appear once the match locks, so nobody can copy the strongest bots. After full time it shows average points by SIM level and the real-player average (3+ predictions).
+- **What the bots predict** on match pages: the result split from all bots. Before kick-off the most-picked scores come from SIM2–SIM5 only, and SIM1 shows just its lean on the result; SIM1's exact scores appear once the match locks, so nobody can copy the strongest bots. After full time, once every prediction has its points, it shows average points by SIM level and the real-player average (3+ predictions).
 - **Bot consensus** line on each weekly guide card.
-- **Can you beat SIM1?** on weekly guides and `/table` (latest week with a finished match): the best SIM1 bot's points against real players. Guests who aren't on the global table yet are counted but not named.
+- **Can you beat SIM1?** on weekly guides and `/table` (latest week with a finished match): the best SIM1 bot's points against real players, over finished matches whose points have been written. Postponed, cancelled and abandoned matches don't stop a week counting as complete. Guests who aren't on the global table yet are counted but not named.
+
+Week pages use `pcWeekFixtures()` (in `seo-content.php`) for the Friday-to-Thursday UK week, and the season start comes from `pcSeasonYear()` in `clubs.php`.
 
 The bot section of "Player prediction insights" was folded into the new panel; that block now covers real players only.
 
 ## Friends leagues
 
 - After a first save, the homepage offers to create a league on the spot and share it (WhatsApp, copy link, native share). Players who are already in a league get its share links instead.
-- Invite links stay `/?invite=CODE`. Following one now lands on the predictions (`/?joined_league=1&league=ID#predict`) with the league table alongside, instead of on `/leagues`.
+- League names are checked as 2–80 characters (not bytes), so accents and emoji count once.
+- Invite links stay `/?invite=CODE`. Following one, or signing in with an invite pending, lands on the predictions (`/?joined_league=1&league=ID#predict`) with the league table alongside, instead of on `/leagues`.
 - `/league/CODE` is a read-only league page for anyone with the code (`noindex,nofollow`, not in the sitemap): table, this week's pick progress (counts only until kick-off), picks for matches that have kicked off, and this week against SIM1.
 
 ## Homepage for first-time visitors
 
-A visitor on a plain `/` (no query string) sees the next three open matches and a "Show all N matches" button. The full list opens as soon as they open the score picker. Deep links (`?fixture=`, `?invite=`, paging) always show everything.
+A visitor on a plain `/` (no query string) sees the next three open matches and a "Show all N upcoming matches" button (N is the number of open matches on that page). Days with no visible matches get an `extraday` class from the server, so this works without CSS `:has()`. The full list opens as soon as they open the score picker. Deep links (`?fixture=`, `?invite=`, paging) always show everything.
 
 ## Deployment
 

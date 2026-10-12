@@ -81,3 +81,4 @@ function pc_join_pending(PDO $db,string $token): ?string {
  $_SESSION['just_joined_league_id']=(int)$league['id'];unset($_SESSION['pending_league_code']);return (string)$league['name'];
 }
 require_once PC_ROOT.'/inc/listing.php';
+require_once PC_ROOT.'/inc/league-share.php';

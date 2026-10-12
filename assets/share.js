@@ -1,0 +1,2 @@
+// Shared by the homepage and /league/CODE: copy text with a visible confirmation, falling back to a prompt.
+async function copyText(text,button,doneLabel,promptLabel){try{await navigator.clipboard.writeText(text);if(button){const label=button.dataset.label||button.textContent;button.dataset.label=label;button.textContent=doneLabel;clearTimeout(button.copyReset);button.copyReset=setTimeout(()=>{button.textContent=label},2500)}return true}catch(e){prompt(promptLabel,text);return false}}

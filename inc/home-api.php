@@ -39,7 +39,7 @@ if(isset($_GET['api'])){
  if($_GET['api']==='player_results'){
   $playerId=(int)($in['user_id']??0);$period=(string)($in['period']??'season');
   $now=new DateTimeImmutable('now',new DateTimeZone('Europe/London'));
-  $year=((int)$now->format('n')>=7)?(int)$now->format('Y'):(int)$now->format('Y')-1;
+  $year=pcSeasonYear();
   $start=new DateTimeImmutable($year.'-08-01 00:00:00',new DateTimeZone('Europe/London'));$end=$start->modify('+10 months');$title='Season '.substr((string)$year,2).'/'.substr((string)($year+1),2);
   if($period!=='season'){
    if(!preg_match('/^\d{4}-\d{2}$/',$period)){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'Invalid period']);exit;}
@@ -74,7 +74,7 @@ if(isset($_GET['api'])){
   $leagueId=(int)($in['league_id']??0);$period=(string)($in['period']??'season');
   $league=$db->prepare('SELECT l.id,l.name,l.code,l.owner_user_id FROM leagues l JOIN league_members mine ON mine.league_id=l.id AND mine.user_id=? WHERE l.id=?');$league->execute([$uid,$leagueId]);$leagueInfo=$league->fetch(PDO::FETCH_ASSOC);
   if(!$leagueInfo){http_response_code(403);echo json_encode(['ok'=>false,'error'=>'You are not a member of this league']);exit;}
-  $now=new DateTimeImmutable('now',new DateTimeZone('Europe/London'));$year=((int)$now->format('n')>=7)?(int)$now->format('Y'):(int)$now->format('Y')-1;
+  $year=pcSeasonYear();
   $start=new DateTimeImmutable($year.'-08-01 00:00:00',new DateTimeZone('Europe/London'));$end=$start->modify('+10 months');$title='Season '.substr((string)$year,2).'/'.substr((string)($year+1),2);
   if($period!=='season'){
    if(!preg_match('/^\d{4}-\d{2}$/',$period)){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'Invalid period']);exit;}
@@ -113,7 +113,8 @@ if(isset($_GET['api'])){
  }
  if($_GET['api']==='league'){
   if($_SERVER['REQUEST_METHOD']!=='POST'||!hash_equals((string)$_SESSION['registration_csrf'],(string)($in['csrf']??'')))pc_auth_error(403,'Please refresh and try again.');
-  $n=trim((string)($in['name']??''));if(strlen($n)<2||strlen($n)>80)pc_auth_error(400,'Enter a league name of 2–80 characters.');
+  $n=trim((string)($in['name']??''));// Count characters, not bytes (no mbstring here); invalid UTF-8 fails the match too.
+  if(!preg_match('/^.{2,80}$/us',$n))pc_auth_error(400,'Enter a league name of 2–80 characters.');
   if($uid<1){http_response_code(401);echo json_encode(['ok'=>false,'need_name'=>true,'league_name'=>$n,'error'=>'Choose your player name to create your league.']);exit;}
   $db->beginTransaction();
   try{$c=code();$db->prepare('INSERT INTO leagues(code,name,owner_user_id) VALUES(?,?,?)')->execute([$c,$n,$uid]);$lid=(int)$db->lastInsertId();$db->prepare('INSERT INTO league_members(league_id,user_id) VALUES(?,?)')->execute([$lid,$uid]);$db->commit();}

@@ -49,17 +49,14 @@ require_once __DIR__.'/data-status.php';
 require __DIR__.'/player-nav.php';
 require __DIR__.'/seo-content.php';
 require __DIR__.'/bot-insights.php';
+require_once __DIR__.'/inc/league-share.php';
 if($kind==='league'){
  require __DIR__.'/league-progress.php';
- $sy=(int)date('n')>=7?(int)date('Y'):(int)date('Y')-1;
- $leagueStart=new DateTimeImmutable($sy.'-08-01 00:00:00',new DateTimeZone('Europe/London'));
+ $leagueStart=new DateTimeImmutable(pcSeasonYear().'-08-01 00:00:00',new DateTimeZone('Europe/London'));
  $leagueTable=friendLeagueProgress($db,(int)$league['id'],0,$leagueStart,$leagueStart->modify('+10 months'));
  $viewerToken=(string)($_COOKIE['pc_token']??'');$isMember=false;
  if($viewerToken!==''){$q=$db->prepare('SELECT 1 FROM league_members lm JOIN users u ON u.id=lm.user_id WHERE lm.league_id=? AND u.token=?');$q->execute([(int)$league['id'],$viewerToken]);$isMember=(bool)$q->fetchColumn();}
- $weekStart=weekKey(gmdate('c'));
- $q=$db->prepare("SELECT * FROM fixtures WHERE julianday(kickoff_utc)>=julianday(?) AND julianday(kickoff_utc)<julianday(?,'+7 days') ORDER BY julianday(kickoff_utc),id");
- $weekStartUtc=(new DateTimeImmutable($weekStart,new DateTimeZone('Europe/London')))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
- $q->execute([$weekStartUtc,$weekStartUtc]);$leagueWeek=$q->fetchAll(PDO::FETCH_ASSOC);
+ $leagueWeek=pcWeekFixtures($db,weekKey(gmdate('c')));
  $leaguePicks=[];
  if($leagueWeek){
   $ids=implode(',',array_map(fn($f)=>(int)$f['id'],$leagueWeek));
@@ -69,7 +66,7 @@ if($kind==='league'){
 }
 $clubSummary='';
 if($kind==='club'&&$club){
- require_once __DIR__.'/standings.php';$sy=(int)date('n')>=7?(int)date('Y'):(int)date('Y')-1;
+ require_once __DIR__.'/standings.php';$sy=pcSeasonYear();
  foreach(leagueStandings($db,$sy.'-07-01T00:00:00Z',($sy+1).'-07-01T00:00:00Z')['rows'] as $r){if($r['team']===$club&&$r['p']>0){
   $ord=fn($n)=>$n.(in_array($n%100,[11,12,13],true)?'th':(['th','st','nd','rd'][$n%10]??'th'));
   $clubSummary=$club.' are '.$ord((int)$r['position']).' in our Premier League table with '.pcCount((int)$r['pts'],'point').' from '.pcCount((int)$r['p'],'match','matches').' ('.pcWords([pcCount((int)$r['w'],'win'),pcCount((int)$r['d'],'draw'),pcCount((int)$r['l'],'defeat')]).'), scoring '.$r['gf'].' and conceding '.$r['ga'].'.';}}
@@ -78,10 +75,10 @@ if($kind==='club'&&$club){
 }
 if($kind==='table'){
  require __DIR__.'/standings.php';
- $seasonYear=(int)date('n')>=7?(int)date('Y'):(int)date('Y')-1;
+ $seasonYear=pcSeasonYear();
  $standings=leagueStandings($db,$seasonYear.'-07-01T00:00:00Z',($seasonYear+1).'-07-01T00:00:00Z');
  $lastDone=$db->query("SELECT kickoff_utc FROM fixtures WHERE status IN ('FT','AET','PEN') AND home_score IS NOT NULL ORDER BY julianday(kickoff_utc) DESC LIMIT 1")->fetchColumn();$simWeek=[];$simWeekLabel='';
- if($lastDone){$wk=weekKey((string)$lastDone);$simWeekLabel='Week of '.date('j M',strtotime($wk));$from=(new DateTimeImmutable($wk,new DateTimeZone('Europe/London')))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');$q=$db->prepare("SELECT * FROM fixtures WHERE julianday(kickoff_utc)>=julianday(?) AND julianday(kickoff_utc)<julianday(?,'+7 days')");$q->execute([$from,$from]);$simWeek=$q->fetchAll(PDO::FETCH_ASSOC);}
+ if($lastDone){$wk=weekKey((string)$lastDone);$simWeekLabel='Week of '.date('j M',strtotime($wk));$simWeek=pcWeekFixtures($db,$wk);}
  $title='Premier League table '.$seasonYear.'/'.substr((string)($seasonYear+1),2);$path='/table';$description='Premier League standings calculated from completed results on PredictionComp, including points, goal difference and recent form.';
 }
 
@@ -160,11 +157,10 @@ body>main a.matchrow:hover,body>main a.matchrow:focus-visible{background:var(--i
  $done=fn($f)=>in_array($f['status'],['FT','AET','PEN'],true)&&$f['home_score']!==null&&$f['away_score']!==null;
  $started=array_values(array_filter($leagueWeek,fn($f)=>strtotime($f['kickoff_utc'])<=time()));
  $open=array_values(array_filter($leagueWeek,fn($f)=>strtotime($f['kickoff_utc'])>time()));
- $members=$leagueTable['members'];$inviteUrl='https://predictioncomp.com/?invite='.rawurlencode($league['code']);
- $shareText='Join my PredictionComp league "'.$league['name'].'": free Premier League score predictions. Can you beat us (and the bots)?';
+ $members=$leagueTable['members'];$inviteUrl=pcLeagueInviteUrl($league['code']);
 ?><p class="lede">A friends league on PredictionComp with <?=pcCount(count($members),'player')?>. One set of predictions counts for every league you're in.</p>
 <div class="leaguecta"><?php if($isMember):?><a class="cta" href="/?league=<?=(int)$league['id']?>#predict">Make your predictions</a><?php else:?><a class="cta" href="<?=e($inviteUrl)?>">Join <?=e($league['name'])?></a><?php endif;?>
-<a class="sharebtn whatsapp" href="https://wa.me/?text=<?=rawurlencode($shareText.' '.$inviteUrl)?>" target="_blank" rel="noopener">Share on WhatsApp</a><button type="button" class="sharebtn" data-url="<?=e($inviteUrl)?>" onclick="copyInvite(this)">Copy invite link</button></div>
+<a class="sharebtn whatsapp" href="<?=e(pcLeagueWhatsAppUrl($league['name'],$league['code']))?>" target="_blank" rel="noopener">Share on WhatsApp</a><button type="button" class="sharebtn" data-url="<?=e($inviteUrl)?>" onclick="copyText(this.dataset.url,this,'✓ Link copied','Copy this invite link:')">Copy invite link</button></div>
 <section class="panel"><h2>League table</h2><?php if(!$members):?><p>Nobody has joined yet.</p><?php else:?><div class="standingswrap"><table class="standings leaguetable"><thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col" title="<?=e($leagueTable['week_label'])?>">Week</th><th scope="col">Pts</th></tr></thead><tbody>
 <?php foreach($members as $m):?><tr><td><?=(int)$m['rank']?></td><td><?=e($m['display_name'])?><?php if(!empty($m['is_bot'])):?> <span class="simbadge">SIM<?=max(1,min(5,(int)$m['bot_grade']))?></span><?php endif;?></td><td><?=(int)$m['round_pts']?></td><td><b><?=(int)$m['pts']?></b></td></tr>
 <?php endforeach;?></tbody></table></div><?php endif;?><p class="note">Season points from finished matches. “Week” is the latest completed week (<?=e($leagueTable['week_label'])?>).</p></section>
@@ -179,7 +175,7 @@ body>main a.matchrow:hover,body>main a.matchrow:focus-visible{background:var(--i
 <?php endforeach;?></tbody></table></div><p class="note"><span class="exact">Exact score 5</span> · <span class="result">Right result 3</span> · <span class="miss">Wrong 0</span></p>
 <?php elseif(!$open):?><p>No matches this week.</p><?php endif;?></section>
 <?php beatSim1Block($db,$leagueWeek,'This week vs SIM1','',array_map(fn($m)=>(int)$m['id'],array_filter($members,fn($m)=>empty($m['is_bot']))));?>
-<script>async function copyInvite(b){try{await navigator.clipboard.writeText(b.dataset.url);b.textContent='✓ Link copied'}catch(e){prompt('Copy this invite link:',b.dataset.url)}}</script>
+<script src="/assets/share.js?v=1"></script>
 <?php elseif($kind==='fixtures'||$kind==='results'):?><p class="fixtures-intro">Premier League · <?=$kind==='results'?'Completed matches · Newest first':'Upcoming matches · All times UK'?></p><?php if(!$rows):?><p><?=$kind==='results'?'No completed results available yet.':'No upcoming fixtures available yet.'?></p><?php else:fixtureRows($rows);endif;?><nav class="pager" aria-label="<?=$kind==='results'?'Result':'Fixture'?> pages"><?php if($page>1):?><a href="/<?=$kind?>?p=<?=$page-1?>">← Previous</a><?php endif;?><span>Page <?=$page?> of <?=$pages?></span><?php if($page<$pages):?><a href="/<?=$kind?>?p=<?=$page+1?>">Next →</a><?php endif;?></nav>
 <?php elseif($kind==='guides'):?><p>Prepare your free Premier League game predictions with factual match previews. Each guide groups fixtures from Friday to Thursday in UK time; rearranged matches appear in the week they are scheduled to take place.</p><div class="grid"><?php foreach($guideWeeks as $key=>$games):?><a class="panel" href="/prediction-guides/<?=e($key)?>"><strong>Week of <?=e(date('j M Y',strtotime($key)))?></strong><p><?=count($games)?> fixtures · Previews &amp; results</p></a><?php endforeach;?></div>
 <?php elseif($kind==='guide'):?><p>Compare recent team form, make your own score predictions and review the results after the matches. These summaries use recorded league results rather than injury news or predicted line-ups.</p><a class="cta" href="/#predict">Play the free prediction game</a><p><a href="/prediction-guides">All weekly guides</a> · <button type="button" class="shareguide" onclick="shareGuide(this)">Share this guide</button><span id="shareStatus" role="status"></span></p><?php weekReviewBlock($db,$rows);beatSim1Block($db,$rows);foreach($rows as $f):previewBlock($db,$f,true);endforeach;?><p class="note">Form summaries use up to five completed league matches in our records before each fixture. Missing results can limit the sample.</p>
