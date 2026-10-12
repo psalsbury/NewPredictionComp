@@ -13,6 +13,7 @@ if(!$pendingInviteName&&!empty($_SESSION['pending_league_code'])){
 if($pendingInviteName&&$uid>0&&!isset($_GET['api'])){
  $s=$db->prepare('SELECT id FROM leagues WHERE code=?');$s->execute([$_SESSION['pending_league_code']]);$joinedId=(int)$s->fetchColumn();pc_join_pending($db,(string)$user['token']);header('Location: /?joined_league=1&league='.$joinedId.'#predict');exit;
 }
+if(isset($_GET['verify_email']))pc_verify_email_route($db);
 if(($_GET['auth']??'')==='logout'){
  setcookie('pc_token','',['expires'=>time()-3600,'path'=>'/','secure'=>true,'httponly'=>true,'samesite'=>'Lax']);
  header('Location: /');exit;

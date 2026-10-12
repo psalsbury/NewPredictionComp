@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-import argparse,fcntl,hashlib,json,secrets,sqlite3,subprocess
+import argparse,fcntl,hashlib,json,os,secrets,sqlite3,subprocess
 from datetime import datetime,timedelta,timezone
 from zoneinfo import ZoneInfo
 from email.message import EmailMessage
-DB='/var/lib/predictioncomp/predictioncomp.sqlite'
+DB=os.environ.get('PREDICTIONCOMP_DB','/var/lib/predictioncomp/predictioncomp.sqlite')
+SENDER='admin@predictioncomp.com'
 UK=ZoneInfo('Europe/London')
 def parse(value):
  d=datetime.fromisoformat(value.replace('Z','+00:00'))
@@ -32,8 +33,11 @@ def candidates(db,now):
 def build_message(candidate,token):
  user=candidate['user'];first=candidate['first'];kick=parse(first['kickoff_utc']).astimezone(UK);n=len(candidate['games'])
  unsubscribe='https://predictioncomp.com/reminder-settings.php?token='+token
- msg=EmailMessage();msg['From']='PredictionComp <admin@clubdailyfive.com>';msg['To']=user['email'];msg['Subject']=f'PredictionComp: {n} prediction'+('s' if n!=1 else '')+' still to make'
- msg.set_content(f"Hi {user['display_name']},\n\nYou have {n} unfinished prediction"+('s' if n!=1 else '')+f" for the week of {candidate['week']}.\n\nYour next missing pick is {first['home']} v {first['away']}.\nIt locks at {kick:%a %d %b, %H:%M} UK time.\n\nFinish your picks:\nhttps://predictioncomp.com/?fixture={first['id']}&finish_picks=1#predict\n\nA saved 0–0 counts as complete.\n\nYou enabled optional prediction reminders. We send at most one per matchweek.\nChange timing or switch them off in Account:\nhttps://predictioncomp.com/?view=account\n\nTurn off reminders:\n{unsubscribe}\n")
+ week=datetime.fromisoformat(candidate['week']).strftime('%a %-d %b')
+ msg=EmailMessage();msg['From']=f'PredictionComp <{SENDER}>';msg['Reply-To']=SENDER;msg['To']=user['email']
+ # One-click unsubscribe (RFC 8058): reminder-settings.php switches reminders off on POST.
+ msg['List-Unsubscribe']=f'<{unsubscribe}>';msg['List-Unsubscribe-Post']='List-Unsubscribe=One-Click';msg['Subject']=f'PredictionComp: {n} prediction'+('s' if n!=1 else '')+' still to make'
+ msg.set_content(f"Hi {user['display_name']},\n\nYou have {n} unfinished prediction"+('s' if n!=1 else '')+f" for the matchweek starting {week}.\n\nYour next missing pick is {first['home']} v {first['away']}.\nIt locks at {kick:%a %d %b, %H:%M} UK time.\n\nFinish your picks:\nhttps://predictioncomp.com/?fixture={first['id']}&finish_picks=1#predict\n\nA saved 0–0 counts as complete.\n\nYou enabled optional prediction reminders. We send at most one per matchweek.\nChange timing or switch them off in your account:\nhttps://predictioncomp.com/account\n\nTurn off reminders:\n{unsubscribe}\n")
  return msg
 def run(db,now,dry=False,sender=None):
  eligible=candidates(db,now);sent=failed=0
@@ -46,7 +50,7 @@ def run(db,now,dry=False,sender=None):
   try:
    msg=build_message(item,token)
    if sender:sender(msg)
-   else:subprocess.run(['/usr/sbin/sendmail','-t','-oi'],input=msg.as_bytes(),check=True,timeout=30)
+   else:subprocess.run(['/usr/sbin/sendmail','-t','-oi','-f',SENDER],input=msg.as_bytes(),check=True,timeout=30)
    db.execute("UPDATE prediction_reminder_log SET status='sent',sent_at=? WHERE user_id=? AND week_key=?",(now.isoformat(),uid,week));db.commit();sent+=1
   except Exception as exc:
    db.execute("UPDATE prediction_reminder_log SET status='failed' WHERE user_id=? AND week_key=?",(uid,week));db.commit();failed+=1

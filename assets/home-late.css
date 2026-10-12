@@ -28,3 +28,12 @@
 .sharebtn.whatsapp{background:#1f7a4b;border-color:#25a463;color:#fff}
 .copybtn.whatsappbtn{background:#1f7a4b;border-color:#25a463;color:#fff}
 a.copybtn{text-decoration:none;display:inline-block;font-size:13.3333px;line-height:normal;font-weight:800;color:#eef5f8}
+/* Reminder suggestion under the matchweek summary. */
+.remindernudge{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:12px 14px;margin:12px 18px;padding:14px 44px 14px 16px;background:var(--ink-2,#161e2a);border:1px solid var(--gold-line,rgba(244,197,66,.32));border-radius:var(--radius-sm,10px)}
+.remindernudge[hidden]{display:none}
+.remindernudge .remindericon{font-size:22px}
+.remindernudge>div{flex:1 1 220px}
+.remindernudge p{margin:3px 0 0;color:var(--text-2,#a8b3c3);font-size:14px;line-height:1.45}
+.remindernudge .btn{min-height:44px}
+.remindernudge .remindernudgeclose{position:absolute;top:6px;right:6px}
+.inviteprompt.reminderproblem{border-color:var(--red,#f0707e)}

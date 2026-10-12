@@ -20,6 +20,14 @@ To keep drive-by players off the global table, a guest is only listed once they 
 
 `bin/prediction_reminders.py` (run by `predictioncomp-reminders.timer` every 15 minutes as www-data) emails players who opted in to reminders and have missing picks, 2 or 24 hours before their next missing fixture locks. It sends at most one email per player per matchweek, logged in `prediction_reminder_log` with a hashed one-click unsubscribe token (`reminder-settings.php`). Use `--dry-run` to list who would be emailed.
 
+Reminders go from `admin@predictioncomp.com` (envelope sender too, so SPF and DKIM align) with `List-Unsubscribe` and one-click `List-Unsubscribe-Post` headers; a POST to the `reminder-settings.php?token=` link switches reminders off. `PREDICTIONCOMP_DB` overrides the database path for testing.
+
+### Switching reminders on
+
+Reminders need a confirmed email (`inc/reminders.php`). Google and email-link sign-ins are confirmed already. Password and guest accounts confirm by clicking a link: turning reminders on (homepage suggestion, `/?api=reminders`, or the Account checkbox) emails `/?verify_email=TOKEN`, valid for 24 hours, which confirms the address and switches reminders on. Confirmation links are stored in `auth_magic_links` hashed as `sha256('verify:'+token)`, so they can't be used as sign-in links and sign-in links can't confirm. No schema change was needed.
+
+Signed-in players with reminders off see a dismissible "Never miss a deadline" suggestion under the matchweek summary (dismissal is remembered in `localStorage`). Players without an email are pointed to `/account` instead.
+
 ## Daily owner summary
 
 `bin/daily_summary.py` (installed in `/opt/predictioncomp/bin`, run by `predictioncomp-daily-summary.timer` at 08:00 UK time as www-data) emails the owner one summary of the previous UK day: new players (guest or registered, and whether guests are on the table yet), guests who came back, prediction activity and running totals. It replaces the old one-email-per-new-player alert. Quiet days send nothing. Each day is recorded in `sync_meta` (`daily_summary:<date>`) so it is never sent twice. Use `--dry-run` to preview.

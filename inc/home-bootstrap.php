@@ -82,3 +82,4 @@ function pc_join_pending(PDO $db,string $token): ?string {
 }
 require_once PC_ROOT.'/inc/listing.php';
 require_once PC_ROOT.'/inc/league-share.php';
+require_once PC_ROOT.'/inc/reminders.php';
