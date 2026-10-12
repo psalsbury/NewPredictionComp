@@ -37,3 +37,5 @@ a.copybtn{text-decoration:none;display:inline-block;font-size:13.3333px;line-hei
 .remindernudge .btn{min-height:44px}
 .remindernudge .remindernudgeclose{position:absolute;top:6px;right:6px}
 .inviteprompt.reminderproblem{border-color:var(--red,#f0707e)}
+/* Status messages sit at the top of the predictions card, so links ending #predict show them. */
+#predict>.inviteprompt{margin:14px 18px 4px;font-size:14px}
