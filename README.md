@@ -63,3 +63,10 @@ Secrets remain outside the repository: `/etc/predictioncomp/quiz-agent.env` and 
 ## Validation
 
 PHP lint and Python compilation passed. Isolated database tests verified six-hour cache expiry, shared PHP/Python warm-cache reads without database queries, aliases, badges and next-season membership. The live homepage, club list, standings and sitemap returned HTTP 200, and all 20 current-season badge redirects passed.
+
+
+### Distinct predictions across official gameweeks
+
+Bot uniqueness compares the ordered predictions for **every fixture in the same official Premier League gameweek**, including completed and live fixtures. Matching scores on individual matches are allowed. Membership comes from the Premier League's official fixture feed (`fantasy.premierleague.com/api/fixtures/`, `event`), matched to stored fixtures by season and teams and cached in `fixture_gameweeks` for six hours. It does not use a Friday-to-Monday date window or a truncated list of upcoming matches. The prediction progress summary uses that same membership, including midweek or rescheduled games assigned to the gameweek by the official feed.
+
+On reruns, saved predictions are retained, and only future unlocked bot picks can be adjusted to keep full gameweek entries distinct. Locked predictions and human choices are never modified to enforce uniqueness. Bots avoid copying complete human gameweek entries too. If locked history makes uniqueness impossible, preserve that history and log the exception instead of failing the entire scheduled job. Completed fixture seeding only fills missing bot predictions; it no longer overwrites existing picks.

@@ -165,37 +165,9 @@ def predict(grade, uid, external, home, away, supported, suffix, profile):
     # repeatable chaotic pattern; no form, club or opponent information is used.
     return rng.randint(0, 5), rng.randint(0, 5)
 
-def unique_slate(slate, used, uid):
-    signature = tuple(slate)
-    if signature not in used:
-        used.add(signature)
-        return slate
-    # Walk the full scoreline combination space deterministically. This makes
-    # every bot's collective matchweek entry unique even when individual match
-    # predictions legitimately coincide.
-    space = 49 ** len(slate)
-    encoded = 0
-    for home_goal, away_goal in slate:
-        encoded = encoded * 49 + home_goal * 7 + away_goal
-    step = (uid * 2 + 1) % space or 1
-    if step % 7 == 0:
-        step += 2
-    for attempt in range(1, min(space, 100000) + 1):
-        value = (encoded + attempt * step) % space
-        candidate = []
-        work = value
-        for _ in slate:
-            digit = work % 49
-            candidate.append((digit // 7, digit % 7))
-            work //= 49
-        candidate.reverse()
-        signature = tuple(candidate)
-        if signature not in used:
-            used.add(signature)
-            return candidate
-    raise RuntimeError('Could not create a unique bot prediction slate')
-
-c = sqlite3.connect(DB)
+c = sqlite3.connect(DB, timeout=30)
+from gameweeks import refresh_gameweeks, generate_gameweek_predictions
+refresh_gameweeks(c, season)
 cols = {r[1] for r in c.execute('PRAGMA table_info(users)')}
 if 'is_bot' not in cols:
     c.execute('ALTER TABLE users ADD COLUMN is_bot INTEGER NOT NULL DEFAULT 0')
@@ -349,8 +321,7 @@ for game in completed:
         points = 5 if exact else 3 if pred_result == actual_result else 0
         saved = datetime.fromtimestamp(game['timestamp'] - 3600, timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
         c.execute("""INSERT INTO predictions(user_id,fixture_id,home_score,away_score,points,saved_at)
-          VALUES(?,?,?,?,?,?) ON CONFLICT(user_id,fixture_id) DO UPDATE SET
-          home_score=excluded.home_score,away_score=excluded.away_score,points=excluded.points,saved_at=excluded.saved_at""",
+          VALUES(?,?,?,?,?,?) ON CONFLICT(user_id,fixture_id) DO NOTHING""",
           (uid, fid, ph, pa, points, saved))
         historical_written += 1
     home_pts = 3 if game['hg'] > game['ag'] else 1 if game['hg'] == game['ag'] else 0
@@ -358,34 +329,14 @@ for game in completed:
     history.setdefault(game['home'], []).append({'opponent': game['away'], 'venue': 'H', 'gf': game['hg'], 'ga': game['ag'], 'pts': home_pts})
     history.setdefault(game['away'], []).append({'opponent': game['home'], 'venue': 'A', 'gf': game['ag'], 'ga': game['hg'], 'pts': away_pts})
 
-fixtures = c.execute("""SELECT id,COALESCE(external_id,id),COALESCE(NULLIF(round,''),'Upcoming'),
- home,away FROM fixtures WHERE kickoff_utc>datetime('now') ORDER BY kickoff_utc LIMIT 20""").fetchall()
-fixture_groups = {}
-for fixture in fixtures:
-    fixture_groups.setdefault(fixture[2], []).append(fixture)
-
-written = 0
-unique_matchweeks = {}
-for round_name, round_fixtures in fixture_groups.items():
-    used_slates = set()
-    for uid, supported, grade in bots:
-        slate = []
-        for fid, external, _, home, away in round_fixtures:
-            slate.append(predict(grade, uid, external, home, away, supported, 'future-v3', profiles[uid]))
-        slate = unique_slate(slate, used_slates, uid)
-        for (fid, external, _, home, away), (ph, pa) in zip(round_fixtures, slate):
-            c.execute("""INSERT INTO predictions(user_id,fixture_id,home_score,away_score,saved_at)
-              VALUES(?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(user_id,fixture_id) DO UPDATE SET
-              home_score=excluded.home_score,away_score=excluded.away_score,saved_at=CURRENT_TIMESTAMP
-              WHERE (SELECT kickoff_utc FROM fixtures WHERE id=excluded.fixture_id)>datetime('now')""",
-              (uid, fid, ph, pa))
-            written += 1
-    unique_matchweeks[round_name] = len(used_slates)
+written, unique_matchweeks = generate_gameweek_predictions(
+    c, bots, lambda grade, uid, external, home, away, supported:
+    predict(grade, uid, external, home, away, supported, 'future-v3', profiles[uid]))
 
 c.commit()
 distribution = dict(c.execute('SELECT bot_grade,COUNT(*) FROM users WHERE is_bot=1 GROUP BY bot_grade ORDER BY bot_grade'))
 print('simulated_players', len(bots), 'grades', distribution, 'completed_fixtures', len(completed),
-      'historical_predictions_written', historical_written, 'future_fixtures', len(fixtures),
+      'historical_predictions_seeded', historical_written, 'gameweeks', unique_matchweeks,
       'future_predictions_written', written)
 
 load_catalog(c,force=True)

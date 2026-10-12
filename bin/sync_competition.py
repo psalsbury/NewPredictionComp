@@ -78,6 +78,8 @@ def refresh_published(c,season):
    external=900000000+int(hashlib.sha256(f'PL{season}:{home}:{away}'.encode()).hexdigest()[:12],16)
    c.execute("INSERT INTO fixtures(external_id,round,kickoff_utc,home,away,status) VALUES(?,?,?,?,?,'NS')",(external,f'Premier League {season}/{str(season+1)[2:]}',kick,home,away))
    added+=1
+ from gameweeks import refresh_gameweeks
+ refresh_gameweeks(c,season)
  return added,updated
 
 def matching(c,home,away,date):
