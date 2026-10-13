@@ -58,8 +58,13 @@ for($m=0;$m<10;$m++){
  $ms=$seasonStart->modify('+'.$m.' months');$key=$ms->format('Y-m');
  $leaderPeriods[$key]=[$ms->format('M'),$ms,$ms->modify('+1 month')];
 }
-$leaderPeriod=(string)($_GET['table']??'season');
-if(!isset($leaderPeriods[$leaderPeriod]))$leaderPeriod='season';
+$currentLeagueMonth=$ukNow->format('Y-m');
+if(!isset($leaderPeriods[$currentLeagueMonth])){
+ $monthStart=$ukNow->modify('first day of this month')->setTime(0,0);
+ $leaderPeriods[$currentLeagueMonth]=[$monthStart->format('M'),$monthStart,$monthStart->modify('+1 month')];
+}
+$leaderPeriod=(string)($_GET['table']??$currentLeagueMonth);
+if(!isset($leaderPeriods[$leaderPeriod]))$leaderPeriod=$currentLeagueMonth;
 [$leaderTitle,$leaderStart,$leaderEnd]=$leaderPeriods[$leaderPeriod];
 $leagues=$db->prepare("SELECT l.id,l.name,l.code,(SELECT COUNT(*) FROM league_members mc WHERE mc.league_id=l.id) member_count FROM leagues l JOIN league_members m ON m.league_id=l.id WHERE m.user_id=? ORDER BY l.created_at DESC");$leagues->execute([$uid]);$myLeagues=$leagues->fetchAll(PDO::FETCH_ASSOC);
 $selectedLeagueId=(int)($_GET['league']??0);$selectedLeague=null;
