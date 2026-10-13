@@ -16,8 +16,22 @@ def api(params):
  if not KEY: raise RuntimeError('API_FOOTBALL_KEY missing')
  u='https://v3.football.api-sports.io/fixtures?'+urllib.parse.urlencode(params)
  with urllib.request.urlopen(urllib.request.Request(u,headers={'x-apisports-key':KEY}),timeout=30) as r: data=json.load(r)
- if data.get('errors'): raise RuntimeError('API-Football: '+str(data['errors']))
+ if data.get('errors'):
+  errors=data['errors']
+  if isinstance(errors,dict) and 'plan' in errors: raise PlanBlocked('API-Football: '+str(errors))
+  raise RuntimeError('API-Football: '+str(errors))
  return data.get('response',[])
+class PlanBlocked(RuntimeError):
+ '''The API-Football plan doesn't cover this season: expected, not a fault (the published list and scoreboards cover it).'''
+PLAN_RETRY_DAYS=7
+def plan_blocked(c,season):
+ '''True while a recent answer said the plan doesn't cover the season; asks again weekly in case the plan changes.'''
+ row=c.execute('SELECT value FROM sync_meta WHERE key=?',(f'api_plan_blocked:{season}',)).fetchone()
+ if not row: return False
+ try: return (datetime.now(timezone.utc)-datetime.fromisoformat(row[0])).days<PLAN_RETRY_DAYS
+ except ValueError: return False
+def note_plan_blocked(c,season):
+ c.execute("INSERT INTO sync_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(f'api_plan_blocked:{season}',datetime.now(timezone.utc).isoformat()))
 
 def published_source(season,connection=None):
  configured=os.environ.get('PREDICTIONCOMP_PUBLISHED_URL')
@@ -184,13 +198,18 @@ def run_sync():
   c.execute("INSERT INTO sync_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(night_key,uk_now.date().isoformat()))
   c.commit()
   try:
+   if plan_blocked(c,season): raise PlanBlocked('skipped')
    season_items=api({'league':39,'season':season})
    if not season_items: raise RuntimeError('Season source returned no fixtures')
    for item in season_items: save(c,item,True)
    c.execute("INSERT INTO sync_meta(key,value) VALUES('season_refresh_success',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(datetime.now(timezone.utc).isoformat(),))
    print('season_fixtures_refreshed',len(season_items),'season',season)
   except (RuntimeError,OSError,ValueError) as exc:
-   print('season_refresh_unavailable',str(exc)[:200])
+   # A plan that doesn't cover the season is expected, so it's a note, not a warning ("unavailable" marks warnings).
+   if isinstance(exc,PlanBlocked):
+    if str(exc)!='skipped': note_plan_blocked(c,season)
+    print('season_api_not_on_plan: using the published fixture list')
+   else: print('season_refresh_unavailable',str(exc)[:200])
    try:
     c.execute('SAVEPOINT published_refresh')
     added,changed=refresh_published(c,season)
@@ -200,6 +219,7 @@ def run_sync():
    except (RuntimeError,OSError,ValueError,sqlite3.Error) as fallback_exc:
     c.execute('ROLLBACK TO published_refresh');c.execute('RELEASE published_refresh')
     print('published_refresh_unavailable',str(fallback_exc)[:200])
+ if hourly and plan_blocked(c,season): hourly=False # nothing to fetch on this plan; the published list covers it
  if hourly:
   try:
    c.execute("INSERT INTO sync_meta(key,value) VALUES('upcoming_sync',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(datetime.now(timezone.utc).isoformat(),))
@@ -209,6 +229,7 @@ def run_sync():
    up=len(upcoming)
    c.execute("""INSERT INTO sync_meta(key,value) VALUES('upcoming_sync',?)
     ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP""",(datetime.now(timezone.utc).isoformat(),))
+  except PlanBlocked: note_plan_blocked(c,season)
   except (RuntimeError, OSError, ValueError) as exc: print('upcoming_api_unavailable',str(exc)[:200])
  # Fixed fixture seeds removed; source failures retain existing stored fixtures.
  marks=','.join('?' for _ in TERMINAL)
