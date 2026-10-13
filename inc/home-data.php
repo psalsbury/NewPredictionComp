@@ -1,12 +1,25 @@
 <?php
 declare(strict_types=1);
 // Everything the homepage template needs: fixtures, picks, history, leaderboards.
-$fixturePage=max(0,(int)($_GET['fixtures_page']??0));
+// Browse complete official matchweeks, including rearranged fixtures.
+$fixtureSeason=pcSeasonYear();
+$q=$db->prepare('SELECT g.gameweek,MIN(julianday(f.kickoff_utc)) first_day,MAX(julianday(f.kickoff_utc)) last_day FROM fixture_gameweeks g JOIN fixtures f ON f.id=g.fixture_id WHERE g.season=? GROUP BY g.gameweek ORDER BY g.gameweek');
+$q->execute([$fixtureSeason]);$fixtureWeeks=$q->fetchAll(PDO::FETCH_ASSOC);
+$weekNumbers=array_map(fn($w)=>(int)$w['gameweek'],$fixtureWeeks);
+$q=$db->prepare("SELECT g.gameweek FROM fixtures f JOIN fixture_gameweeks g ON g.fixture_id=f.id WHERE g.season=? AND julianday(f.kickoff_utc)>julianday('now') AND COALESCE(f.status,'NS') NOT IN ('FT','AET','PEN','CANC','ABD','SIM') ORDER BY julianday(f.kickoff_utc),f.id LIMIT 1");
+$q->execute([$fixtureSeason]);$defaultWeek=(int)($q->fetchColumn()?:end($weekNumbers));
+$selectedFixtureWeek=(int)($_GET['matchweek']??$defaultWeek);
 $fixtureTarget=(int)($_GET['fixture']??0);
-if($fixtureTarget>0){$q=$db->prepare("SELECT kickoff_utc FROM fixtures WHERE id=?");$q->execute([$fixtureTarget]);$targetKick=$q->fetchColumn();if($targetKick&&strtotime($targetKick)>time()){$q=$db->prepare("SELECT COUNT(*) FROM fixtures WHERE julianday(kickoff_utc)>=julianday('now','-24 hours') AND julianday(kickoff_utc)<julianday(?)");$q->execute([$targetKick]);$fixturePage=(int)floor((int)$q->fetchColumn()/10);}}
-$fixtureCount=(int)$db->query("SELECT COUNT(*) FROM fixtures WHERE julianday(kickoff_utc)>=julianday('now','-24 hours')")->fetchColumn();
-$fixturePage=min($fixturePage,max(0,(int)ceil($fixtureCount/10)-1));
-$fixtures=$db->query("SELECT * FROM fixtures WHERE julianday(kickoff_utc)>=julianday('now','-24 hours') ORDER BY julianday(kickoff_utc),id LIMIT 10 OFFSET ".($fixturePage*10))->fetchAll(PDO::FETCH_ASSOC);
+if($fixtureTarget>0){$q=$db->prepare('SELECT gameweek FROM fixture_gameweeks WHERE season=? AND fixture_id=?');$q->execute([$fixtureSeason,$fixtureTarget]);$selectedFixtureWeek=(int)($q->fetchColumn()?:$selectedFixtureWeek);}
+if(!in_array($selectedFixtureWeek,$weekNumbers,true))$selectedFixtureWeek=$defaultWeek;
+$weekIndex=array_search($selectedFixtureWeek,$weekNumbers,true);
+$previousFixtureWeek=$weekIndex!==false&&$weekIndex>0?$weekNumbers[$weekIndex-1]:null;
+$nextFixtureWeek=$weekIndex!==false&&isset($weekNumbers[$weekIndex+1])?$weekNumbers[$weekIndex+1]:null;
+$q=$db->prepare('SELECT f.* FROM fixtures f JOIN fixture_gameweeks g ON g.fixture_id=f.id WHERE g.season=? AND g.gameweek=? ORDER BY julianday(f.kickoff_utc),f.id');
+$q->execute([$fixtureSeason,$selectedFixtureWeek]);$fixtures=$q->fetchAll(PDO::FETCH_ASSOC);
+$fixtureCount=count($fixtures);$fixturePage=0;
+$fixtureWeekRange='';
+if($fixtures){$first=(new DateTimeImmutable($fixtures[0]['kickoff_utc']))->setTimezone(new DateTimeZone('Europe/London'));$last=(new DateTimeImmutable($fixtures[count($fixtures)-1]['kickoff_utc']))->setTimezone(new DateTimeZone('Europe/London'));$fixtureWeekRange=$first->format('D j M').($first->format('Y-m-d')!==$last->format('Y-m-d')?' – '.$last->format('D j M'):'');}
 // First-time visitors on a plain homepage see the next three open matches; the rest are one tap away.
 // $dayExtra marks UK days whose matches are all hidden, so the template can hide the whole day without CSS :has().
 $collapseFixtures=false;$fixtureExtra=[];$dayExtra=[];$openFixtureCount=0;
@@ -26,7 +39,7 @@ $ps=$db->prepare('SELECT fixture_id,home_score,away_score FROM predictions WHERE
 require PC_ROOT.'/player-nav.php';
 require_once PC_ROOT.'/data-status.php';
 require PC_ROOT.'/matchweek.php';
-$matchweek=matchweekSummary($db,$pred,time());
+$matchweek=matchweekSummary($db,$pred,time(),['fixtures'=>$fixtures,'label'=>'Matchweek '.$selectedFixtureWeek.' · '.$fixtureSeason.'/'.substr((string)($fixtureSeason+1),2)]);
 $historyStmt=$db->prepare("SELECT f.round,f.kickoff_utc,f.home,f.away,f.home_score actual_home,f.away_score actual_away,f.status,p.home_score predicted_home,p.away_score predicted_away,COALESCE(p.points,0) points
  FROM predictions p JOIN fixtures f ON f.id=p.fixture_id
  WHERE p.user_id=? AND julianday(f.kickoff_utc)<=julianday('now') AND COALESCE(f.status,'')<>'SIM'
