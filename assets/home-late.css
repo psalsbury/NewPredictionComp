@@ -85,3 +85,6 @@ body>.footer p{max-width:900px;margin:8px auto}
  body.home-screen .mobilepick small{font-size:12px}
  body.home-screen .fixture .frontresult{min-width:0}
 }
+
+/* Keep club names intact: wrap only at spaces, never hyphenate words. */
+#predict .team .clubnamelink,#predict .team span{hyphens:none;-webkit-hyphens:none;word-break:normal;overflow-wrap:normal;white-space:normal;text-overflow:clip;overflow:visible;min-width:0}
