@@ -35,6 +35,25 @@ $pages=[
 if(!isset($pages[$slug])){http_response_code(404);$slug='about';}
 $page=$pages[$slug];
 function h(string $v):string{return htmlspecialchars($v,ENT_QUOTES,'UTF-8');}
+// Public bot directory: only names, grades and published personality profiles.
+if(in_array($slug,['beat-the-bots','how-it-works'],true)){
+ require_once __DIR__.'/inc/config.php';
+ $botDb=new PDO('sqlite:'.pc_db_path());
+ $botRows=$botDb->query("SELECT u.id,u.display_name,COALESCE(u.bot_grade,5) grade,b.title,b.bio FROM users u LEFT JOIN bot_profiles b ON b.user_id=u.id WHERE u.is_bot=1 ORDER BY u.display_name COLLATE NOCASE")->fetchAll(PDO::FETCH_ASSOC);
+ $byGrade=[];
+ foreach($botRows as $bot)$byGrade[max(1,min(5,(int)$bot['grade']))][]=$bot;
+ $page['body']=preg_replace_callback('/<li><strong>SIM([1-5]) — ([^<]+)<\\/strong><br>(.*?)<\\/li>/s',function($m)use($byGrade){
+  $grade=(int)$m[1];$bots=$byGrade[$grade]??[];
+  $html='<li class="simdirectory"><details name="sim-level-directory"><summary><strong>SIM'.$grade.' — '.h($m[2]).'</strong><span class="simdescription">'.$m[3].'</span><span class="simhint">Meet the '.count($bots).' bots <span aria-hidden="true">↓</span></span></summary><div class="simbotlist">';
+  foreach($bots as $bot){
+   $html.='<article class="simbotcard"><img src="/bot-avatar.php?id='.(int)$bot['id'].'" width="56" height="56" loading="lazy" alt=""><div><h3>'.h((string)$bot['display_name']).'</h3>';
+   if(!empty($bot['title']))$html.='<small>'.h((string)$bot['title']).'</small>';
+   $html.='<p>'.h((string)($bot['bio']?:'This bot is ready to compete in SIM'.$grade.'.')).'</p></div></article>';
+  }
+  return $html.'</div></details></li>';
+ },$page['body']);
+ $page['body'].='<style>.simdirectory summary{cursor:pointer;list-style:none;min-height:44px}.simdirectory summary::-webkit-details-marker{display:none}.simdescription,.simhint{display:block}.simhint{margin-top:10px;font-size:14px;color:var(--gold,#f4c542);font-weight:600}.simdirectory details[open] .simhint{margin-bottom:14px}.simdirectory summary:focus-visible{outline:2px solid #f4c542;outline-offset:4px}.simbotlist{display:grid;gap:12px}.simbotcard{display:grid;grid-template-columns:56px minmax(0,1fr);align-items:start;gap:12px;border-top:1px solid #314255;padding:16px 0 4px}.simbotcard img{border-radius:12px}.simbotcard h3{margin:0;font-size:20px;line-height:1.3;overflow-wrap:anywhere}.simbotcard small{display:block;color:#f4c542;margin-top:3px}.simbotcard p{margin:7px 0 0;font-size:15px;line-height:1.6}</style>';
+}
 if(($_SERVER['HTTP_X_PREDICTIONCOMP_OVERLAY']??'')==='1'){echo '<div class="infoeyebrow">PREDICTIONCOMP.COM</div><h1 id="infoTitle">'.h($page['title']).'</h1>'.$page['body'];exit;}
 require __DIR__.'/player-nav.php';
 $canonical='https://predictioncomp.com/'.$slug;
