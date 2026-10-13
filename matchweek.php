@@ -1,5 +1,6 @@
 <?php
-function matchweekSummary(PDO $db,array $pred,int $now):array{
+function matchweekSummary(PDO $db,array $pred,int $now,?array $selection=null):array{
+ if($selection===null){
  $q=$db->prepare("SELECT * FROM fixtures WHERE julianday(kickoff_utc)>julianday(?) AND COALESCE(status,'NS') NOT IN ('PST','CANC','ABD','SUSP','FT','AET','PEN','SIM') ORDER BY julianday(kickoff_utc),id LIMIT 1");
  $q->execute([gmdate('c',$now)]);$next=$q->fetch(PDO::FETCH_ASSOC);
  if(!$next)return ['fixtures'=>[],'saved'=>0,'total'=>0,'missing'=>[],'lockedMissing'=>0,'deadline'=>null,'label'=>'No upcoming matchweek'];
@@ -14,6 +15,7 @@ function matchweekSummary(PDO $db,array $pred,int $now):array{
  }
  if(!$mapped){$rows=[['id'=>$next['id'],'kickoff_utc'=>$next['kickoff_utc'],'status'=>$next['status']]];}
  $label=$mapped?'Gameweek '.$gameweek.' · '.$season.'/'.substr((string)($season+1),2):'Upcoming match · gameweek awaiting confirmation';
+ }else{$rows=$selection['fixtures'];$label=$selection['label'];}
  $saved=0;$missing=[];$locked=0;$deadline=null;
  foreach($rows as $f){$id=(int)$f['id'];$open=strtotime($f['kickoff_utc'])>$now&&!in_array($f['status'],['FT','AET','PEN'],true);
  if(array_key_exists($id,$pred))$saved++;elseif($open)$missing[]=$id;else $locked++;
