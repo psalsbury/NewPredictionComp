@@ -63,6 +63,20 @@ $leaderSql="SELECT u.id,u.display_name,CASE WHEN ".pc_listed_sql()." THEN 1 ELSE
  FROM users u LEFT JOIN predictions p ON p.user_id=u.id
  LEFT JOIN fixtures f ON f.id=p.fixture_id AND f.kickoff_utc>=:period_start AND f.kickoff_utc<:period_end
  ".$leaderScope." GROUP BY u.id ORDER BY pts DESC,u.is_bot ASC,u.id LIMIT ".$leaderPageSize." OFFSET ".$leaderOffset;
+// Locate the current player's page using the same ordering as the table.
+if(($_GET['focus']??'')==='me'&&$uid>0&&!$selectedLeagueId){
+ $positionSql=preg_replace('/ LIMIT [0-9]+ OFFSET [0-9]+$/','',$leaderSql);
+ $positionStmt=$db->prepare($positionSql);
+ $positionStmt->execute([':period_start'=>$leaderStart->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),':period_end'=>$leaderEnd->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s')]);
+ foreach($positionStmt->fetchAll(PDO::FETCH_ASSOC) as $index=>$entry){
+  if((int)$entry['id']===$uid){
+   $leaderPage=intdiv($index,$leaderPageSize)+1;
+   $leaderOffset=($leaderPage-1)*$leaderPageSize;
+   $leaderSql=preg_replace('/ LIMIT [0-9]+ OFFSET [0-9]+$/',' LIMIT '.$leaderPageSize.' OFFSET '.$leaderOffset,$leaderSql);
+   break;
+  }
+ }
+}
 $leaderStmt=$db->prepare($leaderSql);
 $leaderStmt->execute([':period_start'=>$leaderStart->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),':period_end'=>$leaderEnd->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s')]);
 $leaders=$leaderStmt->fetchAll(PDO::FETCH_ASSOC);
