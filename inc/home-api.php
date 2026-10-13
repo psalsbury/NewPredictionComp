@@ -37,7 +37,7 @@ if(isset($_GET['api'])){
   echo json_encode(['ok'=>true]);exit;
  }
  if($_GET['api']==='player_results'){
-  $playerId=(int)($in['user_id']??0);$period=(string)($in['period']??'season');
+  $playerId=(int)($in['user_id']??0);$period=(string)($in['period']??(new DateTimeImmutable('now',new DateTimeZone('Europe/London')))->format('Y-m'));
   $now=new DateTimeImmutable('now',new DateTimeZone('Europe/London'));
   $year=pcSeasonYear();
   $start=new DateTimeImmutable($year.'-08-01 00:00:00',new DateTimeZone('Europe/London'));$end=$start->modify('+10 months');$title='Season '.substr((string)$year,2).'/'.substr((string)($year+1),2);
@@ -76,7 +76,7 @@ if(isset($_GET['api'])){
   $r=pc_set_reminders($db,$user,!empty($in['on']),(int)($in['lead_hours']??24));if(!$r['ok'])http_response_code(400);echo json_encode($r);exit;
  }
  if($_GET['api']==='league_table'){
-  $leagueId=(int)($in['league_id']??0);$period=(string)($in['period']??'season');
+  $leagueId=(int)($in['league_id']??0);$period=(string)($in['period']??(new DateTimeImmutable('now',new DateTimeZone('Europe/London')))->format('Y-m'));
   $league=$db->prepare('SELECT l.id,l.name,l.code,l.owner_user_id FROM leagues l JOIN league_members mine ON mine.league_id=l.id AND mine.user_id=? WHERE l.id=?');$league->execute([$uid,$leagueId]);$leagueInfo=$league->fetch(PDO::FETCH_ASSOC);
   if(!$leagueInfo){http_response_code(403);echo json_encode(['ok'=>false,'error'=>'You are not a member of this league']);exit;}
   $year=pcSeasonYear();
