@@ -307,6 +307,17 @@ c.execute('DELETE FROM bot_profiles WHERE user_id NOT IN (SELECT id FROM users W
 history = {}
 historical_written = 0
 for game in completed:
+    # Source IDs differ between API and CSV: reuse the season pairing's fixture.
+    existing = c.execute("""
+        SELECT id,external_id,round FROM fixtures
+        WHERE home=? AND away=? AND kickoff_utc>=? AND kickoff_utc<?
+        ORDER BY id LIMIT 2
+    """, (game['home'],game['away'],f'{season}-07-01',f'{season+1}-07-01')).fetchall()
+    if len(existing)>1:
+        raise RuntimeError("Duplicate season fixture pairing; repair before importing bot history")
+    if existing:
+        game['external']=existing[0][1]
+        game['round']=existing[0][2] or game['round']
     c.execute("""INSERT INTO fixtures(external_id,round,kickoff_utc,home,away,home_score,away_score,status,updated_at)
       VALUES(?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
       ON CONFLICT(external_id) DO UPDATE SET round=excluded.round,kickoff_utc=excluded.kickoff_utc,
