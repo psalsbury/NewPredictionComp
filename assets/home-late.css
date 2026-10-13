@@ -42,3 +42,46 @@ a.copybtn{text-decoration:none;display:inline-block;font-size:13.3333px;line-hei
 
 .predictionweeknav{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:12px;padding:20px 18px;border-top:1px solid #304655;border-bottom:1px solid #304655;background:#101e2b;text-align:center}
 .predictionweeknav h2{margin:0;font-size:24px;line-height:1.2}.predictionweeknav p{margin:6px 0 10px;font-size:15px;color:#bac7d5}.weekarrow{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;border:1px solid #4b5a70;background:#182a3b;color:#f4c542;text-decoration:none;font-size:34px;line-height:1}.weekarrow:hover{background:#243d52}.weekarrow.disabled{opacity:.3}.weekselectlabel{font-size:13px;color:#b8c7d6}.weekselectlabel select{min-height:40px;margin-left:6px;border:1px solid #496077;border-radius:8px;background:#15283a;color:#f1f5fa;padding:5px 10px;font:inherit}.predictionweeknav a:focus-visible,.weekselectlabel select:focus-visible{outline:2px solid #f4c542;outline-offset:3px}
+
+/* Centre the shared footer independently of the content columns. */
+body>.footer{width:100%;max-width:none;margin:32px auto 0;text-align:center}
+body>.footer .footerlinks{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:10px 18px;max-width:900px;margin:0 auto 12px}
+body>.footer p{max-width:900px;margin:8px auto}
+@media(min-width:901px){
+ body.home-screen .main{display:grid;grid-template-columns:minmax(0,1fr);max-width:860px;margin:24px auto 36px;gap:20px}
+ body.home-screen .main>aside{display:none}
+ body.home-screen .sitenavigation{max-width:1000px;margin-inline:auto}
+ body.home-screen .flowhome{padding:22px;background:var(--ink-1)}
+ body.home-screen .flowwelcome h1{font-size:30px}
+ body.home-screen .flowstats{margin:16px 0;gap:10px}
+ body.home-screen .flowstats>.flowstat{padding:14px}
+ body.home-screen .flowstats strong{font-size:25px}
+ body.home-screen .flowleaguegrid{gap:10px}
+ body.home-screen .flowleague{padding:14px}
+ body.home-screen #predict>.head{display:flex;align-items:center;justify-content:space-between;padding:22px 24px 18px;gap:16px}
+ body.home-screen #predict>.head h1,body.home-screen #predict>.head h2{font-size:28px}
+ body.home-screen .historybtn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;text-decoration:none}
+ body.home-screen .matchweeksummary{display:grid;grid-template-columns:minmax(0,1fr) 180px;align-items:center;gap:20px;margin:0 24px 16px;padding:16px 18px}
+ body.home-screen .matchweekinfo{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center}
+ body.home-screen .matchweekinfo p{grid-column:1/-1;margin:4px 0 0}
+ body.home-screen .matchweekfinish{width:180px;min-height:44px;margin:0}
+ body.home-screen .matchweekfinish[hidden]{display:none}
+ body.home-screen .guestintro{display:grid;grid-template-columns:minmax(0,1fr) 180px;align-items:center;gap:20px;margin:0 24px 16px;padding:16px 18px}
+ body.home-screen .guestintro>.btn,body.home-screen .guestintro>.ghost{width:180px;min-height:44px}
+ body.home-screen .remindernudge{display:grid;grid-template-columns:26px minmax(0,1fr) 180px;align-items:center;gap:12px;margin:0 24px 16px;padding:16px 18px}
+ body.home-screen .remindernudge>.btn{width:180px;min-height:44px}
+ body.home-screen .remindernudgeclose{right:2px;top:0;font-size:22px}
+ body.home-screen .remindernudge:has(+ .flowguide ~ .guestnudge){display:none}
+ body.home-screen .flowguide{margin:0 24px 16px;padding:12px 16px}
+ body.home-screen .predictionweeknav{padding:18px 24px}
+ body.home-screen .fixture{grid-template-columns:90px minmax(0,1fr) 112px minmax(0,1fr);padding:18px 24px;gap:14px;font-size:17px}
+ body.home-screen .fixture .team img{width:30px;height:30px}
+ body.home-screen .fixture .home.team{grid-template-columns:minmax(0,1fr) 30px}
+ body.home-screen .fixture .away.team{grid-template-columns:30px minmax(0,1fr)}
+ body.home-screen #predict .fixture .score{padding-bottom:0}
+ body.home-screen .fixture .score>input,body.home-screen .fixture .score>span:not(.fixturestatus),body.home-screen .fixture .desktopsave{display:none}
+ body.home-screen .mobilepick{display:flex;flex-direction:column;align-items:center;justify-content:center;width:106px;min-height:66px;gap:5px;padding:8px}
+ body.home-screen .mobilepick span{font-size:28px}
+ body.home-screen .mobilepick small{font-size:12px}
+ body.home-screen .fixture .frontresult{min-width:0}
+}
