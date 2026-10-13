@@ -5,15 +5,9 @@ from zoneinfo import ZoneInfo
 
 DB = os.environ.get('PREDICTIONCOMP_DB', '/var/lib/predictioncomp/predictioncomp.sqlite')
 KEY = os.environ.get('API_FOOTBALL_KEY', '')
-NAMES = [
-    "Macca","Smudger","Sparky","TheCat","TopBins","Nutmeg","TheWall","Silky","MagicBoots","SleepyHead",
-    "BigDave","GrumpyBadger","TeaAndBiscuits","CaptainCrumpet","DaveFromAccounts","CrispyBacon","GardenGnome","BiscuitBandit","MoodyGoose","SneakyFerret",
-    "HappyCamper","PintAndPie","BananaBoots","BigCheese","CaptainChaos","QuietStorm","MrAverage","ProbablyDave","RandomPenguin","DiscoStu",
-    "OopsMyBad","JustHereForFun","PieEater","MadHatter","LuckyDuck","WheresMyKeys","SecretSquirrel","PacketOfCrisps","PubQuizPro","DadJokes",
-    "TwoSugars","EasyTiger","BobbleHat","SpareChange","TurboSnail","KingOfTea","LateAgain","NoIdeaMate","WeekendHero","SleepyHeadJr"
-]
-TARGET_BOTS = 50
-BOTS_PER_GRADE = 10
+NAMES = ['Macca', 'TheCat', 'TopBins', 'Nutmeg', 'MagicBoots', 'GrumpyBadger', 'TeaAndBiscuits', 'CaptainCrumpet', 'DaveFromAccounts', 'SneakyFerret', 'BananaBoots', 'CaptainChaos', 'MrAverage', 'RandomPenguin', 'DiscoStu', 'JustHereForFun', 'LuckyDuck', 'WheresMyKeys', 'PubQuizPro', 'DadJokes', 'TurboSnail', 'LateAgain', 'NoIdeaMate', 'WeekendHero', 'SleepyHeadJr']
+TARGET_BOTS = 25
+BOTS_PER_GRADE = 5
 from club_catalog import load_catalog, canonical, register_team, season_year
 _catalog=load_catalog()
 season=season_year()
@@ -179,7 +173,7 @@ generic = c.execute("""SELECT id FROM users WHERE email IS NULL AND display_name
  AND display_name NOT IN ('Pete','Pete Salsbury') ORDER BY id""").fetchall()
 for i, (uid,) in enumerate(generic):
     c.execute('UPDATE users SET display_name=?,is_bot=1,supported_club=COALESCE(supported_club,?) WHERE id=?',
-              (NAMES[i % 100], CLUBS[i % len(CLUBS)], uid))
+              (NAMES[i % len(NAMES)], CLUBS[i % len(CLUBS)], uid))
 
 # Remove surplus simulated identities while preserving every chosen bot's history.
 marks = ','.join('?' for _ in NAMES)
@@ -190,6 +184,9 @@ if retired:
     retired_marks = ','.join('?' for _ in retired)
     c.execute(f'DELETE FROM league_members WHERE user_id IN ({retired_marks})', retired)
     c.execute(f'DELETE FROM predictions WHERE user_id IN ({retired_marks})', retired)
+    c.execute(f'DELETE FROM bot_profiles WHERE user_id IN ({retired_marks})', retired)
+    c.execute(f'DELETE FROM prediction_reminder_log WHERE user_id IN ({retired_marks})', retired)
+    c.execute(f'DELETE FROM auth_magic_links WHERE originating_user_id IN ({retired_marks})', retired)
     c.execute(f'DELETE FROM users WHERE id IN ({retired_marks})', retired)
 
 count = c.execute('SELECT COUNT(*) FROM users WHERE is_bot=1').fetchone()[0]
@@ -198,7 +195,7 @@ for i in range(count, TARGET_BOTS):
     c.execute('INSERT OR IGNORE INTO users(token,display_name,supported_club,is_bot) VALUES(?,?,?,1)',
               (token, NAMES[i % len(NAMES)], CLUBS[i % len(CLUBS)]))
 
-# The curated name order fixes ten distinctive identities at each level.
+# The curated name order fixes five distinctive identities at each level.
 for position, name in enumerate(NAMES):
     c.execute('UPDATE users SET bot_grade=? WHERE is_bot=1 AND display_name=?',
               (position // BOTS_PER_GRADE + 1, name))
