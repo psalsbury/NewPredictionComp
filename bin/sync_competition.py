@@ -139,13 +139,15 @@ def fallback_results(c):
       (int(row['FTHG']),int(row['FTAG']),fid))
     updated+=c.execute('SELECT changes()').fetchone()[0]
   return updated
+# Results are due 1 hour 45 minutes after kick-off. From then on every run (every 2 minutes) checks, until every match
+# that kicked off at that time has a result (Pete, 2026-10-13). Matches more than 7 days old are left to the nightly check.
+RESULTS_DUE="""julianday(kickoff_utc)<=julianday('now','-105 minutes') AND julianday(kickoff_utc)>=julianday('now','-7 days')
+  AND COALESCE(status,'NS') NOT IN ('FT','AET','PEN','PST','CANC','ABD','AWD','WO')"""
+def results_due(c):
+ return [r[0] for r in c.execute(f'SELECT DISTINCT kickoff_utc FROM fixtures WHERE {RESULTS_DUE} ORDER BY 1')]
 def scoreboard_results(c):
  # Poll only dates with unresolved matches old enough to have finished.
- dates=[r[0] for r in c.execute("""SELECT DISTINCT substr(kickoff_utc,1,10) FROM fixtures
-  WHERE julianday(kickoff_utc)<=julianday('now','-105 minutes')
-  AND julianday(kickoff_utc)>=julianday('now','-7 days')
-  AND COALESCE(status,'NS') NOT IN ('FT','AET','PEN','PST','CANC','ABD','AWD','WO')
-  ORDER BY 1""")]
+ dates=[r[0] for r in c.execute(f'SELECT DISTINCT substr(kickoff_utc,1,10) FROM fixtures WHERE {RESULTS_DUE} ORDER BY 1')]
  updated=0
  for date in dates:
   url='https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard?'+urllib.parse.urlencode({'dates':date.replace('-',''),'limit':100})
@@ -242,14 +244,21 @@ def run_sync():
    for item in api({'ids':'-'.join(ids)}): save(c,item,False);polled+=1
    c.execute("INSERT INTO sync_meta(key,value) VALUES('results_checked',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(datetime.now(timezone.utc).isoformat(),))
   except (RuntimeError,OSError,ValueError) as exc: print('results_api_unavailable',str(exc)[:200])
- try:
-  results=fallback_results(c)
+ # Results: nothing is fetched unless a kick-off time is due (see RESULTS_DUE). The ESPN scoreboard goes first; the
+ # football-data.co.uk CSV is the backup for anything still missing, and also runs once a night for older matches.
+ due=results_due(c)
+ if due:
+  print('results_due',len(due),'kickoffs from',due[0])
+  try:
+   fast_results=scoreboard_results(c)
+   print('scoreboard_results_updated',fast_results)
+  except (OSError,ValueError,KeyError,TypeError) as exc: print('scoreboard_results_unavailable',str(exc)[:200])
+ if (due and results_due(c)) or night_due:
+  try:
+   results=fallback_results(c)
+  except (OSError,ValueError) as exc: print('results_fallback_unavailable',str(exc)[:200])
+ if due or night_due:
   c.execute("INSERT INTO sync_meta(key,value) VALUES('results_checked',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(datetime.now(timezone.utc).isoformat(),))
- except (OSError,ValueError) as exc: print('results_fallback_unavailable',str(exc)[:200])
- try:
-  fast_results=scoreboard_results(c)
-  print('scoreboard_results_updated',fast_results)
- except (OSError,ValueError,KeyError,TypeError) as exc: print('scoreboard_results_unavailable',str(exc)[:200])
  score(c);c.commit()
  load_catalog(c,force=night_due or bool(up))
  print('upcoming_refreshed',up,'official_round_seeded',seeded,'results_polled',polled,'csv_results_updated',results)
