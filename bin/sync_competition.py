@@ -174,6 +174,12 @@ def run_sync():
  last_night=c.execute('SELECT value FROM sync_meta WHERE key=?',(night_key,)).fetchone()
  night_due=uk_now.hour>=2 and (not last_night or last_night[0]!=uk_now.date().isoformat())
  if night_due:
+  try:
+   from odds_sync import sync_odds
+   sync_odds(c)
+  except Exception as exc:
+   # Do not print request URLs, which contain the private API credential.
+   print('odds_sync_unavailable',type(exc).__name__)
   # Record attempts too, so an unavailable subscription does not retry every two minutes.
   c.execute("INSERT INTO sync_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(night_key,uk_now.date().isoformat()))
   c.commit()
