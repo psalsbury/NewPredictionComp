@@ -88,3 +88,9 @@ body>.footer p{max-width:900px;margin:8px auto}
 
 /* Keep club names intact: wrap only at spaces, never hyphenate words. */
 #predict .team .clubnamelink,#predict .team span{hyphens:none;-webkit-hyphens:none;word-break:normal;overflow-wrap:normal;white-space:normal;text-overflow:clip;overflow:visible;min-width:0}
+
+.overallchoices{display:grid;grid-template-columns:1fr 1fr;gap:12px}.overallchoices>a{display:flex;flex-direction:column;gap:5px;padding:18px;border:1px solid #344657;border-radius:12px;background:#132532;text-decoration:none}.overallchoices strong{font-size:20px;color:#eef2f7}.overallchoices span{font-size:14px;color:#f4c542}.overallchoices>a:hover{border-color:#f4c542}
+#leaguesDialog .friendleaguecard{display:block;padding:20px;margin-bottom:14px}
+.friendleagueheading{display:flex;align-items:center;justify-content:space-between;gap:16px}.friendleagueheading h3{margin:0!important;font-size:22px}.friendleagueheading small{line-height:1.5;margin-top:5px}.friendleagueheading>.btn{flex-shrink:0;min-height:44px}
+.leagueinvite{margin-top:16px;padding-top:14px;border-top:1px solid #2b4252}.leagueinvite summary{cursor:pointer;color:#f4c542;font-weight:600;min-height:30px}.leagueinviteactions{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}.leagueinviteactions .copybtn,.leagueinvitecode .copybtn{min-height:42px;padding:8px 14px}.leagueinvitecode{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;color:#a8b3c3;font-size:14px}.leagueinvitecode strong{color:#eef2f7;letter-spacing:1px}.leaguepubliclink{display:inline-block;margin-top:14px;font-size:13px;color:#a8b3c3!important}
+@media(max-width:600px){#leaguesDialog .friendleaguecard{padding:16px}.friendleagueheading{align-items:stretch;flex-direction:column;gap:12px}.friendleagueheading>.btn{width:100%}.overallchoices>a{padding:15px}.overallchoices strong{font-size:19px}}
