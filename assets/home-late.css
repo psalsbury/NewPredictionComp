@@ -39,3 +39,6 @@ a.copybtn{text-decoration:none;display:inline-block;font-size:13.3333px;line-hei
 .inviteprompt.reminderproblem{border-color:var(--red,#f0707e)}
 /* Status messages sit at the top of the predictions card, so links ending #predict show them. */
 #predict>.inviteprompt{margin:14px 18px 4px;font-size:14px}
+
+.predictionweeknav{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:12px;padding:20px 18px;border-top:1px solid #304655;border-bottom:1px solid #304655;background:#101e2b;text-align:center}
+.predictionweeknav h2{margin:0;font-size:24px;line-height:1.2}.predictionweeknav p{margin:6px 0 10px;font-size:15px;color:#bac7d5}.weekarrow{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;border:1px solid #4b5a70;background:#182a3b;color:#f4c542;text-decoration:none;font-size:34px;line-height:1}.weekarrow:hover{background:#243d52}.weekarrow.disabled{opacity:.3}.weekselectlabel{font-size:13px;color:#b8c7d6}.weekselectlabel select{min-height:40px;margin-left:6px;border:1px solid #496077;border-radius:8px;background:#15283a;color:#f1f5fa;padding:5px 10px;font:inherit}.predictionweeknav a:focus-visible,.weekselectlabel select:focus-visible{outline:2px solid #f4c542;outline-offset:3px}
