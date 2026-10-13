@@ -40,7 +40,7 @@ require PC_ROOT.'/player-nav.php';
 require_once PC_ROOT.'/data-status.php';
 require PC_ROOT.'/matchweek.php';
 $matchweek=matchweekSummary($db,$pred,time(),['fixtures'=>$fixtures,'label'=>'Matchweek '.$selectedFixtureWeek.' · '.$fixtureSeason.'/'.substr((string)($fixtureSeason+1),2)]);
-$historyStmt=$db->prepare("SELECT f.round,f.kickoff_utc,f.home,f.away,f.home_score actual_home,f.away_score actual_away,f.status,p.home_score predicted_home,p.away_score predicted_away,COALESCE(p.points,0) points
+$historyStmt=$db->prepare("SELECT f.id fixture_id,f.round,f.kickoff_utc,f.home,f.away,f.home_score actual_home,f.away_score actual_away,f.status,p.home_score predicted_home,p.away_score predicted_away,COALESCE(p.points,0) points
  FROM predictions p JOIN fixtures f ON f.id=p.fixture_id
  WHERE p.user_id=? AND julianday(f.kickoff_utc)<=julianday('now') AND COALESCE(f.status,'')<>'SIM'
  ORDER BY f.kickoff_utc DESC LIMIT 100");
