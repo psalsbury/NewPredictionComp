@@ -96,3 +96,25 @@ body>.footer p{max-width:900px;margin:8px auto}
 @media(max-width:600px){#leaguesDialog .friendleaguecard{padding:16px}.friendleagueheading{align-items:stretch;flex-direction:column;gap:12px}.friendleagueheading>.btn{width:100%}.overallchoices>a{padding:15px}.overallchoices strong{font-size:19px}}
 
 .homeleagueactions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch;margin-top:16px}.homeleagueactions .copybtn,.homeleagueactions .leagueviewbtn{display:flex;align-items:center;justify-content:center;min-height:44px;padding:9px 12px;margin:0;border:1px solid #40596a;border-radius:8px;background:#172b3a;color:#eef5f8;text-align:center;text-decoration:none;font:600 14px var(--font,system-ui);white-space:normal}.homeleagueactions .leagueviewbtn{border-color:#b39136;background:rgba(244,197,66,.09);color:#f4c542}.homeleagueactions>a.copybtn{grid-column:1/-1;justify-self:start;border:0;background:none;padding:2px 0;min-height:28px;color:#a8b3c3;font-size:13px}.homeleagueactions>button:hover{border-color:#f4c542}
+
+/* Keep grid tracks and named areas in step across tablet breakpoints. */
+#predict .fixture{grid-template-areas:"date home score away" "odds odds odds odds"}
+#predict .fixture>.date{grid-area:date}
+#predict .fixture>.home{grid-area:home}
+#predict .fixture>.score{grid-area:score;min-width:0}
+#predict .fixture>.away{grid-area:away}
+#predict .fixture>.matchodds{grid-area:odds}
+@media(max-width:900px){
+ #predict .fixture,body.signedin #predict .fixture{grid-template-columns:minmax(0,1fr) 100px minmax(0,1fr);grid-template-areas:"date date date" "home score away" "odds odds odds";gap:12px 14px;padding:16px 18px}
+ #predict .fixture>.date{flex-direction:row;justify-content:center;align-items:center;gap:10px}
+ #predict .fixture>.score{padding-bottom:0}
+ #predict .fixture .mobilepick{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;min-height:56px}
+ #predict .fixture .score:has(.mobilepick)>input,#predict .fixture .score:has(.mobilepick)>span,#predict .fixture .desktopsave{display:none}
+}
+@media(max-width:480px){
+ #predict .fixture,body.signedin #predict .fixture{grid-template-columns:minmax(0,1fr) 84px minmax(0,1fr);column-gap:8px;padding-inline:10px}
+}
+@media(pointer:coarse){
+ #predict .fixture .score:has(.mobilepick){padding-bottom:0}
+ #predict .fixture .score:has(.mobilepick)>.desktopsave{display:none}
+}
