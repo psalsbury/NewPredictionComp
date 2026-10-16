@@ -1,0 +1,77 @@
+/* Shared responsive refinements: keep reading and comparison distances comfortable. */
+html{scroll-padding-bottom:90px}
+body{overflow-wrap:break-word}
+main,.main,.card,.panel,.standalonepanel,.columns>*,.grid>*,.profilemodal{min-width:0}
+body #leader,body .main>aside>#leader{width:100%;max-width:680px;margin-inline:auto}
+#leader>.head{padding:22px 20px 16px}
+#leader>.side{padding:0 16px 8px}
+#leader .row,.leadercolumns{display:grid;grid-template-columns:32px minmax(0,1fr) 54px;gap:12px;align-items:center;padding:6px 12px}
+#leader .row{min-height:56px}
+#leader .row:nth-of-type(even){background:rgba(255,255,255,.018)}
+#leader .row>span{min-width:0;line-height:1.4}
+#leader .row>b:last-child{text-align:right;font-size:22px;font-family:var(--display);font-variant-numeric:tabular-nums}
+#leader .playerlink{min-height:44px;max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:left;font-size:17px;line-height:1.3;padding:8px 0}
+#leader .simbadge{display:inline-block;vertical-align:middle;margin-left:7px}
+.leadercolumns{margin:0 16px;color:var(--text-2);font-size:12px;letter-spacing:.04em;border-bottom:1px solid var(--line);min-height:36px}
+.leadercolumns>span:last-child{text-align:right}
+#leader .periodtabs{display:flex;flex-wrap:wrap;gap:4px;overflow:visible;width:100%;max-width:100%}
+#leader .periodtabs a{display:inline-flex;align-items:center;justify-content:center;min-width:42px;min-height:44px;padding:8px 10px}
+#leader .tablepager{font-size:14px}
+#leader .tablepager a{display:inline-flex;align-items:center;min-height:44px}
+#leader .tablepager a:last-child{justify-content:flex-end}
+body .leaguetable{max-width:760px;margin-inline:auto}
+body .standingswrap{max-width:960px;margin-inline:auto;overflow-x:auto}
+body .standings{font-size:15px}
+body .tableclub{min-width:0}
+body .tableclub span{white-space:normal;overflow-wrap:normal;word-break:normal;hyphens:none}
+body .periodtabs,body .friendperiodtabs{max-width:100%;overscroll-behavior-x:contain}
+body .profilemodal input:not([type=checkbox]),body .profilemodal select,body .leaguesmodal input,body .tools input{font-size:16px;min-height:44px;max-width:100%}
+body .btn,body .ghost,body .outline,body .copybtn,body .leagueviewbtn,body .shareguide,body .resulttabs button,body .clubtabs button{min-height:44px}
+body .historymatch .historyname{overflow-wrap:normal;word-break:normal;hyphens:none}
+body dialog{max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px)}
+body dialog .profilemodal{max-height:calc(100dvh - 48px);overflow-y:auto;overscroll-behavior:contain}
+body .footballitems{max-width:calc(100vw - 24px);max-height:calc(100dvh - 110px);overflow-y:auto}
+body .footballitems a{min-height:44px}
+body main>p,body .content>p{max-width:72ch}
+body .pickgridwrap{max-width:100%;overscroll-behavior-x:contain}
+@media(min-width:721px) and (max-width:1000px){
+ body .sitenavigation{gap:8px;padding-inline:16px}
+ body .sitenavigation .sitebrand{font-size:22px}
+ body .sitenavigation .siteprimary>a{padding-inline:9px}
+ body .sitenavigation .siteaccount{max-width:140px;overflow:hidden;text-overflow:ellipsis}
+ body .columns{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:720px){
+ #leader>.head{padding:18px 14px 12px}
+ #leader>.side{padding:0 8px 8px}
+ #leader .row,.leadercolumns{grid-template-columns:26px minmax(0,1fr) 46px;gap:8px;padding-inline:8px}
+ .leadercolumns{margin-inline:8px}
+ #leader .playerlink{font-size:16px}
+ #leader .row>b:last-child{font-size:21px}
+ #leader .periodtabs a{font-size:13px}
+ body .columns{grid-template-columns:minmax(0,1fr)}
+ body .grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))}
+ body .standings .clubcol{width:48%}
+ body .standings th,body .standings td{font-size:13px;padding:10px 5px}
+ body .tableclub{font-size:13px;gap:6px}
+ body .accountheading{flex-wrap:wrap}
+ body .accountheading h2{flex:1 1 160px}
+ body .historyscores{flex-wrap:wrap;gap:8px}
+ body .friendrow{grid-template-columns:26px minmax(0,1fr) 78px}
+ body .friendrow .friendactions{width:78px;grid-template-columns:1fr}
+ body .friendrow .friendactions>*{grid-column:1}
+ body .content h1{font-size:clamp(28px,7vw,40px);line-height:1.12}
+ body .content{padding:22px 18px}
+ body .footerlinks a,body .foot nav a{display:inline-flex;align-items:center;min-height:44px}
+}
+@media(max-width:360px){
+ body .sitenavigation{padding-inline:10px;gap:6px}
+ body .sitenavigation .sitebrand{font-size:20px}
+ body .sitebrand .brandmark{width:24px;height:24px;flex-basis:24px}
+ body .sitenavigation .siteaccount{max-width:92px;overflow:hidden;text-overflow:ellipsis;padding-inline:8px}
+ #leader .row,.leadercolumns{gap:6px;grid-template-columns:23px minmax(0,1fr) 40px}
+}
+
+/* Match the standalone table inset to its column labels. */
+body .main>aside>#leader>.side{padding:0 16px 8px}
+@media(max-width:720px){body .main>aside>#leader>.side{padding:0 8px 8px}}
