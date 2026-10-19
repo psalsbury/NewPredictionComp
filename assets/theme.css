@@ -302,3 +302,43 @@ body>footer a{color:var(--text-2)}
 #predict .frontresult.correct .frontpick{color:var(--amber);background:rgba(251,191,36,.1);border-color:var(--amber)}
 #predict .frontresult.wrong .frontpick{color:var(--red);background:rgba(248,113,113,.1);border-color:var(--red)}
 #predict .frontoutcome{grid-column:1/-1;color:var(--text-2);font-size:10px}
+
+
+/* 2026 unified interface refresh: shared across homepage, clubs, leagues and account. */
+:root{
+ --ink-0:#0c1520;--ink-1:#142230;--ink-2:#1b2c3b;--ink-3:#25394a;
+ --line:#34495a;--line-soft:#263949;
+ --text:#f5f8fa;--text-2:#c0cdd6;--text-3:#94a7b5;
+ --gold:#78d7cf;--gold-hover:#9ce7df;--gold-ink:#09252a;
+ --gold-soft:rgba(120,215,207,.12);--gold-line:rgba(120,215,207,.45);
+ --radius:18px;--radius-sm:12px;
+}
+body{background:var(--ink-0);letter-spacing:.005em}
+.top,.siteheader{background:var(--ink-1);border-bottom:1px solid var(--line)}
+.sitenavigation{min-height:72px;gap:14px}
+.sitenavigation .siteprimary>a,.sitenavigation .footballmenu summary{font-size:15px;min-height:42px;display:inline-flex;align-items:center}
+.sitenavigation .siteprimary>a[aria-current="page"],.sitenavigation .siteprimary>a.active{background:var(--gold-soft);color:var(--gold);box-shadow:inset 0 -2px var(--gold)}
+.sitenavigation .siteaccount{border-radius:12px}
+.card,.panel,.standalonepanel,.promo,.infodialog,dialog{border-radius:var(--radius);border-color:var(--line);box-shadow:0 8px 30px rgba(0,0,0,.12)}
+.card .head,.panel .head{border-bottom:1px solid var(--line-soft)}
+button,.btn,a.btn,.ghost,.outline{transition:background-color .16s ease,border-color .16s ease,color .16s ease,transform .16s ease}
+button:active,.btn:active{transform:translateY(1px)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.fixture,.historymatch,.friendrow,#leader .row{border-bottom:1px solid var(--line-soft)}
+.fixture:last-child,.historymatch:last-child{border-bottom:0}
+.fixture .home,.fixture .away,.historyname,.tableclub{line-height:1.3;overflow-wrap:normal;word-break:normal;hyphens:none}
+.score input{border-radius:10px;min-height:44px;font-variant-numeric:tabular-nums}
+.periodtabs a,.friendperiodtabs a,.resulttabs button,.clubtabs button{border-radius:10px;min-height:44px}
+.standings th,.leaguetable th{font-size:12px;letter-spacing:.035em;text-transform:uppercase;color:var(--text-2)}
+.standings td,.leaguetable td{font-variant-numeric:tabular-nums}
+.playernav{background:var(--ink-1);border-top:1px solid var(--line);box-shadow:0 -8px 30px rgba(0,0,0,.3)}
+.playernav a[aria-current="page"]{background:var(--gold-soft);color:var(--gold)}
+@media(max-width:720px){
+ .sitenavigation{min-height:62px;padding:9px 12px}
+ .sitenavigation .sitebrand{font-size:22px}
+ .main{gap:14px}
+ .card,.panel{border-radius:14px}
+ .fixture{gap:7px}
+ .playernav a,.playernav .mobilefootball summary{font-size:11px;min-height:54px}
+}
+@media(prefers-reduced-motion:reduce){button,.btn,a.btn,.ghost,.outline{transition:none}}
