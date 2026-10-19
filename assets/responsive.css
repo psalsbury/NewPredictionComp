@@ -75,3 +75,7 @@ body .pickgridwrap{max-width:100%;overscroll-behavior-x:contain}
 /* Match the standalone table inset to its column labels. */
 body .main>aside>#leader>.side{padding:0 16px 8px}
 @media(max-width:720px){body .main>aside>#leader>.side{padding:0 8px 8px}}
+
+/* Shared redesign refinements */
+@media(min-width:721px){.main{gap:24px}.card{min-width:0}}
+@media(max-width:720px){.fixture .home,.fixture .away{white-space:normal;word-break:normal}.playernav a span{font-size:11px}}
