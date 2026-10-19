@@ -8,6 +8,17 @@ $q->execute([$fixtureSeason]);$fixtureWeeks=$q->fetchAll(PDO::FETCH_ASSOC);
 $weekNumbers=array_map(fn($w)=>(int)$w['gameweek'],$fixtureWeeks);
 $q=$db->prepare("SELECT g.gameweek FROM fixtures f JOIN fixture_gameweeks g ON g.fixture_id=f.id WHERE g.season=? AND julianday(f.kickoff_utc)>julianday('now') AND COALESCE(f.status,'NS') NOT IN ('FT','AET','PEN','CANC','ABD','SIM') ORDER BY julianday(f.kickoff_utc),f.id LIMIT 1");
 $q->execute([$fixtureSeason]);$defaultWeek=(int)($q->fetchColumn()?:end($weekNumbers));
+// Keep the current official gameweek on the home screen through the UK
+// calendar day of its final fixture. Move to the next gameweek tomorrow,
+// not immediately when the last match kicks off or finishes.
+$todayUK=(new DateTimeImmutable('now',new DateTimeZone('Europe/London')))->format('Y-m-d');
+$activeWeek=null;
+foreach($fixtureWeeks as $weekRow){
+ $firstUK=(new DateTimeImmutable('@'.(int)round(((float)$weekRow['first_day']-2440587.5)*86400)))->setTimezone(new DateTimeZone('Europe/London'))->format('Y-m-d');
+ $lastUK=(new DateTimeImmutable('@'.(int)round(((float)$weekRow['last_day']-2440587.5)*86400)))->setTimezone(new DateTimeZone('Europe/London'))->format('Y-m-d');
+ if($firstUK<=$todayUK && $lastUK>=$todayUK){$activeWeek=(int)$weekRow['gameweek'];break;}
+}
+if($activeWeek!==null)$defaultWeek=$activeWeek;
 $selectedFixtureWeek=(int)($_GET['matchweek']??$defaultWeek);
 $fixtureTarget=(int)($_GET['fixture']??0);
 if($fixtureTarget>0){$q=$db->prepare('SELECT gameweek FROM fixture_gameweeks WHERE season=? AND fixture_id=?');$q->execute([$fixtureSeason,$fixtureTarget]);$selectedFixtureWeek=(int)($q->fetchColumn()?:$selectedFixtureWeek);}
