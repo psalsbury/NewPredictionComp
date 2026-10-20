@@ -115,4 +115,23 @@ PHP lint and Python compilation passed. Isolated database tests verified six-hou
 
 Bot uniqueness compares the ordered predictions for **every fixture in the same official Premier League gameweek**, including completed and live fixtures. Matching scores on individual matches are allowed. Membership comes from the Premier League's official fixture feed (`fantasy.premierleague.com/api/fixtures/`, `event`), matched to stored fixtures by season and teams and cached in `fixture_gameweeks` for six hours. It does not use a Friday-to-Monday date window or a truncated list of upcoming matches. The prediction progress summary uses that same membership, including midweek or rescheduled games assigned to the gameweek by the official feed.
 
-On reruns, saved predictions are retained, and only future unlocked bot picks can be adjusted to keep full gameweek entries distinct. Locked predictions and human choices are never modified to enforce uniqueness. Bots avoid copying complete human gameweek entries too. If locked history makes uniqueness impossible, preserve that history and log the exception instead of failing the entire scheduled job. Completed fixture seeding only fills missing bot predictions; it no longer overwrites existing picks.
+On reruns, future unlocked bot picks are recalculated using the latest available pre-match information. Full matchweek entries stay distinct through plausible, high-value score alternatives. Locked predictions and human choices are never modified to enforce uniqueness. Bots avoid copying complete human gameweek entries too. If locked history makes uniqueness impossible, preserve that history and log the exception instead of failing the entire scheduled job. The bot job never seeds completed fixtures or rewrites locked predictions.
+
+
+## Bot strategy v4
+
+SIM1–SIM4 use regularised, recency-weighted attack and defence estimates, home/away form, and cached prior-season results from football-data.co.uk. Missing or sparse team histories shrink toward league scoring rates. Valid stored pre-match 1X2 odds adjust the result probabilities after removing bookmaker margin; unavailable, stale or post-cutoff prices are ignored. Predictions maximise competition utility: 3 × P(correct result) + 2 × P(exact score), since an exact result earns 5 in total.
+
+All five levels use a common plausible score prior. Level 1 strongly favours high-utility picks; levels 2, 3 and 4 become progressively less selective. Level 5 is independent of teams and odds and samples common football scores. Exponential utility weights ensure the expected strength order, although chance can reverse short-term league positions. Favourite-club loyalty and draw-seeking personality adjustments no longer override football probabilities.
+
+The worker refreshes only unlocked bot entries every time the existing six-hour timer runs, without replacing users, bot grades or profiles. Human choices, kickoff-locked predictions and earned points are preserved. Prior-season results are cached under /var/cache/predictioncomp and are never imported as competition fixtures. The job reports inputs, updated entries and theoretical expected points in sync_meta under last_bot_strategy_job.
+
+Validation: seven regression tests cover points calculation, ordered expected strength, sensible random scores, temporal leakage, odds freshness, gameweek uniqueness and idempotent future-only updates. The read-only walk-forward test on 830 cached/stored matches returned average points per pick of 1.6381, 1.6145, 1.5378, 1.3569 and 1.1706 for SIM1–SIM5. These are retrospective checks, not guarantees for an individual month.
+
+Run checks with:
+
+```sh
+python3 -m unittest discover -s tests -p 'test_bot_strategy.py'
+python3 bin/bot_backtest.py
+python3 bin/simulated_players.py --dry-run --no-gameweek-refresh --no-archive-fetch
+```
