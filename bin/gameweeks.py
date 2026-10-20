@@ -62,42 +62,29 @@ def refresh_gameweeks(db, season, force=False):
     print('official_gameweeks_refreshed', len(rows))
 
 
-def unique_gameweek(slate, used, uid, mutable):
-    """Compare every fixture, changing only picks that have not locked."""
-    signature = tuple(slate)
+def unique_gameweek(slate, used, uid, mutable, alternatives=None):
+    """Resolve duplicates with plausible, low-cost score alternatives only."""
+    signature=tuple(slate)
     if signature not in used:
         used.add(signature)
         return slate
-    indexes = [i for i, can_change in enumerate(mutable) if can_change]
-    space = 49 ** len(indexes)
-    encoded = 0
-    for i in indexes:
-        home, away = slate[i]
-        encoded = encoded * 49 + home * 7 + away
-    step = (uid * 2 + 1) % space or 1
-    if step % 7 == 0:
-        step += 2
-    # Only signatures with the same locked prefix can consume this space.
-    occupied = sum(all(s[i] == slate[i] for i in range(len(slate)) if not mutable[i]) for s in used)
-    for attempt in range(1, min(space, occupied + 1) + 1):
-        work = (encoded + attempt * step) % space
-        candidate = list(slate)
-        for i in reversed(indexes):
-            digit = work % 49
-            candidate[i] = (digit // 7, digit % 7)
-            work //= 49
-        signature = tuple(candidate)
-        if signature not in used:
-            used.add(signature)
-            return candidate
-    # A fully locked or genuinely exhausted week cannot be made unique without
-    # changing past predictions. Preserve it and report it rather than crash.
-    print('gameweek_uniqueness_locked_or_exhausted', uid)
-    used.add(tuple(slate))
+    candidates=[]
+    for i,can_change in enumerate(mutable):
+        if not can_change:continue
+        options=alternatives[i] if alternatives else [((h,a),1/(1+h+a)) for h in range(6) for a in range(6)]
+        current=next((weight for score,weight in options if score==slate[i]),0)
+        for score,weight in options:
+            if score!=slate[i]:candidates.append((current-weight,i,score))
+    for _,i,score in sorted(candidates,key=lambda v:(v[0],v[1],v[2])):
+        candidate=list(slate);candidate[i]=score
+        if tuple(candidate) not in used:
+            used.add(tuple(candidate));return candidate
+    print('gameweek_uniqueness_locked_or_exhausted',uid)
+    used.add(signature)
     return slate
 
 
-def generate_gameweek_predictions(db, bots, prediction):
+def generate_gameweek_predictions(db, bots, prediction, refresh=False, alternatives=None):
     now = datetime.now(timezone.utc).isoformat()
     rows = db.execute("""SELECT f.id,COALESCE(f.external_id,f.id),g.season,g.gameweek,
         f.home,f.away,(julianday(f.kickoff_utc)>julianday(?) AND
@@ -124,19 +111,23 @@ def generate_gameweek_predictions(db, bots, prediction):
                 used.add(tuple(existing[(uid, fid)] for fid in ids))
         for uid, supported, grade in bots:
             slate = [existing.get((uid, f[0])) if not f[6] else
-                     existing.get((uid, f[0]), prediction(grade, uid, f[1], f[4], f[5], supported))
+                     (prediction(grade, uid, f[1], f[4], f[5], supported) if refresh or (uid,f[0]) not in existing else existing[(uid,f[0])])
                      for f in fixtures]
-            slate = unique_gameweek(slate, used, uid, [bool(f[6]) for f in fixtures])
+            options = [alternatives(grade,f[1],f[4],f[5]) if f[6] else [] for f in fixtures] if alternatives else None
+            slate = unique_gameweek(slate, used, uid, [bool(f[6]) for f in fixtures], options)
             for f, score in zip(fixtures, slate):
                 if not f[6]:
                     continue
+                before=db.total_changes
                 db.execute("""INSERT INTO predictions(user_id,fixture_id,home_score,away_score,saved_at)
                     VALUES(?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(user_id,fixture_id) DO UPDATE SET
                     home_score=excluded.home_score,away_score=excluded.away_score,saved_at=CURRENT_TIMESTAMP
                     WHERE EXISTS(SELECT 1 FROM fixtures WHERE id=excluded.fixture_id
                     AND julianday(kickoff_utc)>julianday('now') AND
-                    COALESCE(status,'NS') NOT IN ('FT','AET','PEN','PST','CANC','ABD','AWD','WO','SUSP'))""",
+                    COALESCE(status,'NS') NOT IN ('FT','AET','PEN','PST','CANC','ABD','AWD','WO','SUSP'))
+                    AND (predictions.home_score<>excluded.home_score OR predictions.away_score<>excluded.away_score)""",
                     (uid, f[0], *score))
-                written += 1
+                written += db.total_changes-before
         unique[key] = len(used)
     return written, unique
+
