@@ -101,7 +101,7 @@ function previewBlock(PDO $db,array $match,bool $compact=false):void{
  $q=$db->prepare("SELECT * FROM fixtures WHERE ((home=? AND away=?) OR (home=? AND away=?)) AND julianday(kickoff_utc)<julianday(?) AND status IN ('FT','AET','PEN') AND home_score IS NOT NULL AND away_score IS NOT NULL ORDER BY julianday(kickoff_utc) DESC LIMIT 5");$q->execute([$match['home'],$match['away'],$match['away'],$match['home'],$match['kickoff_utc']]);$meetings=$q->fetchAll(PDO::FETCH_ASSOC);
  echo '<h3>Previous meetings in our records</h3>';if($meetings)fixtureRows($meetings);else echo '<p>No earlier completed meeting is recorded for this season.</p>';
  }
- if(!$compact)echo '<p class="note">Summaries use up to five completed league matches in our records before this fixture. Missing results can limit the sample.</p>';
+ if(!$compact)echo '<p class="note">Form snapshot checked '.e((new DateTimeImmutable('now',new DateTimeZone('Europe/London')))->format('j M Y')).'. Summaries use up to five completed league matches in our records before this fixture. Missing results can limit the sample.</p>';
  if($compact){echo '<p>'.e(uk($match['kickoff_utc'])).' UK';if($match['home_score']!==null&&$match['away_score']!==null)echo ' · Result: '.e($match['home_score'].'–'.$match['away_score']);echo '</p>';if(function_exists('botConsensusLine'))echo botConsensusLine($db,$match);echo '<a href="'.matchLink($match).'" class="compactlink">Match details <span aria-hidden="true">→</span></a>';}
  echo '</section>';
 }
