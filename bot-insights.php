@@ -107,7 +107,7 @@ function beatSim1Block(PDO $db,array $rows,string $heading='Can you beat SIM1?',
  $d=beatSim1Data($db,$rows,$memberIds);if(!$d)return;
  echo '<section class="panel beatsim1"><h2>'.e($heading).'</h2><p>'.($weekLabel!==''?e($weekLabel).': ':'').'The best <span class="simbadge">SIM1</span> bot, '.e($d['best_name']).', scored <strong>'.$d['best'].' points</strong> from '.pcCount($d['matches'],'finished match','finished matches').' (SIM1 average '.number_format($d['avg'],1).').</p>';
  if(!$d['humans']){echo '<p>No real players predicted these matches. <a href="/#predict">Be the first to take SIM1 on</a>.</p></section>';return;}
- echo '<p>'.($d['beat']?pcCount($d['beat'],'player').' '.($d['complete']?'beat':'are beating').' SIM1’s best.':($d['complete']?'Nobody beat SIM1’s best.':'Nobody has beaten SIM1’s best yet.')).'</p><ol class="beatlist">';
+ echo '<p>'.($d['beat']?pcCount($d['beat'],'player').' '.($d['complete']?'beat':((int)$d['beat']===1?'is beating':'are beating')).' SIM1’s best.':($d['complete']?'Nobody beat SIM1’s best.':'Nobody has beaten SIM1’s best yet.')).'</p><ol class="beatlist">';
  $shown=0;$hidden=0;
  foreach($d['humans'] as $h){
   if(empty($h['listed'])){$hidden++;continue;}
