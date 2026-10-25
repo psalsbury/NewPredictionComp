@@ -33,7 +33,7 @@ if(in_array($view,['results','leagues'],true))$css.='<style>
 </style>';
 if($view==='account')$css.='<style>#profileDialog.standalonepanel .profilemodal{max-height:none;overflow:visible;padding-top:24px}.standalonepanel .accountheading{padding-right:0;align-items:center}.standalonepanel .accountheading h2{font-size:26px;line-height:1.2;margin:0}.standalonepanel .accountheading .accountsignout{flex-shrink:0}@media(max-width:720px){.standalonepanel .accountheading h2{font-size:23px}}</style>';
 if($view==='leagues'&&($selectedLeagueId||isset($_GET['global']))){
- $css.='<style>.main>aside{display:block}.main>#leaguesDialog{display:none}.main>aside>.promo{display:none}.main>aside>#leader{border:0;background:transparent}.main>aside>#leader>.head{display:block;padding:0 0 18px}.main>aside>#leader>.side{padding:0}.flowhome{display:none!important}</style>';
+ $css.='<style>.main>aside{display:block}.main>#leaguesDialog{display:none}.main>aside>.promo{display:none}.main>aside>#leader{border:0;background:transparent;padding:24px 28px 28px}@media(max-width:720px){.main>aside>#leader{padding:20px 16px 24px}}.main>aside>#leader>.head{display:block;padding:0 0 18px}.main>aside>#leader>.side{padding:0}.flowhome{display:none!important}</style>';
  $html=str_replace('<h2>'.htmlspecialchars($selectedLeague?$selectedLeague['name']:'Global league').'</h2>','<p><a href="/leagues">← My leagues</a></p><h1>'.htmlspecialchars($selectedLeague?$selectedLeague['name']:'Overall competition').'</h1>',$html);
 }
 $html=str_replace('</head>',$css.'</head>',$html);
