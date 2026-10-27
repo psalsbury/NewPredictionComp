@@ -214,3 +214,6 @@ details.emailregister,details.passwordsetup{margin:18px 0}details.emailregister 
  #friendLeagueDialog .botcontrols{grid-template-columns:minmax(0,1fr) auto;padding:14px;gap:12px}
  #friendLeagueDialog .botcontrols>div:first-child{grid-column:1/-1}
 }
+
+/* Align desktop odds with the teams and score, excluding the time column. */
+@media(min-width:721px){#predict .fixture>.matchodds{grid-column:2/-1;grid-row:2}#predict .fixture>.matchodds .oddsprices{justify-content:center}}
