@@ -39,7 +39,8 @@ if($view==='leagues'&&($selectedLeagueId||isset($_GET['global']))){
 $html=str_replace('</head>',$css.'</head>',$html);
 if($view==='results'&&$uid>0){
  require_once __DIR__.'/inc/results-odds.php';
- $html=str_replace('<div class="resulttabs"',dataFreshnessHtml($db).renderPersonalOddsResults(personalOddsResults($db,$uid,$seasonYear)).'<div class="resulttabs"',$html);
+ require_once __DIR__.'/inc/recap.php';
+ $html=str_replace('<div class="resulttabs"',dataFreshnessHtml($db).recapLinks().renderPersonalOddsResults(personalOddsResults($db,$uid,$seasonYear)).'<div class="resulttabs"',$html);
 }
 $script='<script>selectPlayerTab('.json_encode($view).');';
 if($view==='results'&&$uid>0)$script.="showResultsTab('matches');";
