@@ -40,7 +40,11 @@ $html=str_replace('</head>',$css.'</head>',$html);
 if($view==='results'&&$uid>0){
  require_once __DIR__.'/inc/results-odds.php';
  require_once __DIR__.'/inc/recap.php';
- $html=str_replace('<div class="resulttabs"',dataFreshnessHtml($db).recapLinks().renderPersonalOddsResults(personalOddsResults($db,$uid,$seasonYear)).'<div class="resulttabs"',$html);
+ $html=str_replace('<div class="resulttabs"',dataFreshnessHtml($db).recapLinks().'<div class="resulttabs"',$html);
+ $oddsTab='<button type="button" id="oddsTab" role="tab" aria-controls="oddsPanel" aria-selected="false" tabindex="-1" onclick="showResultsTab(\'odds\')">£1 a match</button>';
+ $html=str_replace('<button type="button" id="performanceTab"',$oddsTab.'<button type="button" id="performanceTab"',$html);
+ $oddsPanel='<section id="oddsPanel" class="performancebody" role="tabpanel" aria-labelledby="oddsTab" hidden>'.renderPersonalOddsResults(personalOddsResults($db,$uid,$seasonYear)).'</section>';
+ $html=str_replace('<section id="performancePanel"',$oddsPanel.'<section id="performancePanel"',$html);
 }
 $script='<script>selectPlayerTab('.json_encode($view).');';
 if($view==='results'&&$uid>0)$script.="showResultsTab('matches');";
