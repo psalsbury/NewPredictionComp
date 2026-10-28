@@ -117,5 +117,5 @@ function beatSim1Block(PDO $db,array $rows,string $heading='Can you beat SIM1?',
  }
  echo '</ol>';
  if($hidden)echo '<p class="note">'.pcCount($hidden,'new player is','new players are').' not shown until they appear on the global table.</p>';
- echo '<a class="cta" href="/#predict">Take on SIM1 in the next matches</a></section>';
+ echo '</section>';
 }
