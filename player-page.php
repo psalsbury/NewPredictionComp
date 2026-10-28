@@ -50,12 +50,13 @@ $html=str_replace('</head>',$css.'</head>',$html);
 if($view==='results'&&$uid>0){
  require_once __DIR__.'/inc/results-odds.php';
  require_once __DIR__.'/inc/recap.php';
- $html=str_replace('<div class="resulttabs"',dataFreshnessHtml($db).recapLinks().'<div class="resulttabs"',$html);
+ $html=str_replace('<div class="resulttabs"',recapLinks().'<div class="resulttabs"',$html);
  $oddsTab='<button type="button" id="oddsTab" role="tab" aria-controls="oddsPanel" aria-selected="false" tabindex="-1" onclick="showResultsTab(\'odds\')">£1 a match</button>';
  $html=preg_replace_callback('/(<button\b[^>]*id="performanceTab"[^>]*>.*?<\/button>)/s',fn($m)=>$m[1].$oddsTab,$html,1);
  $oddsPeriods=personalOddsPeriods($db,$uid,$seasonYear,is_string($_GET['odds_period']??null)?$_GET['odds_period']:'');
  $oddsPanel='<section id="oddsPanel" class="performancebody" role="tabpanel" aria-labelledby="oddsTab" hidden>'.renderPersonalOddsSelector($oddsPeriods).renderPersonalOddsResults(personalOddsResults($db,$uid,$seasonYear,$oddsPeriods['selected']),$oddsPeriods['selected']['label']).'</section>';
  $html=str_replace('<section id="performancePanel"',$oddsPanel.'<section id="performancePanel"',$html);
+ $html=str_replace('</main>','<div class="results-data-updates" style="margin-top:24px">'.dataFreshnessHtml($db).'</div></main>',$html);
 }
 $script='<script>selectPlayerTab('.json_encode($view).');';
 if($view==='results'&&$uid>0)$script.='showResultsTab('.json_encode(($_GET['tab']??'')==='odds'?'odds':'matches').');';
