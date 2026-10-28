@@ -31,6 +31,16 @@ if(in_array($view,['results','leagues'],true))$css.='<style>
 .standalonepanel .emptyhistory{padding:36px 0;text-align:left}
 @media(max-width:720px){.main{padding:24px 16px 30px;margin:0 auto}.standalonepanel .profilemodal{padding:0}.playerpagetitle{font-size:28px}.standalonepanel .leagueactions{grid-template-columns:1fr;gap:16px}.standalonepanel .leagueitem{padding:14px}.standalonepanel .performancegrid{gap:10px}}
 </style>';
+if($view==='results')$css.='<style>
+.standalonepanel .recaplinks{margin:24px 0 28px;padding:22px;border:1px solid var(--line,#2b4353);border-radius:12px;background:var(--ink-2,#102631)}
+.standalonepanel .recaplinks-heading h2{margin:0;font-size:22px;line-height:1.25;letter-spacing:-.3px}
+.standalonepanel .recaplinks-heading p{margin:8px 0 18px;color:var(--text-2,#abc1ce);font-size:14px;line-height:1.5}
+.recaplinks-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.standalonepanel a.recaplinks-card{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:94px;padding:18px;border:1px solid var(--line,#304655);border-radius:10px;background:var(--ink-1,#0e1d29);color:var(--text,#eef5f8);text-decoration:none}
+.recaplinks-copy{display:grid;gap:6px;min-width:0}.recaplinks-copy strong{font-size:17px;line-height:1.3;font-weight:700}.recaplinks-copy>span{color:var(--text-2,#abc1ce);font-size:13px;line-height:1.5}.recaplinks-arrow{flex-shrink:0;font-size:24px;color:var(--gold,#f4c542)}
+.standalonepanel a.recaplinks-card:hover{border-color:var(--gold,#f4c542);background:var(--ink-2,#102631)}.standalonepanel a.recaplinks-card:focus-visible{outline:2px solid var(--gold,#f4c542);outline-offset:3px}
+@media(max-width:600px){.standalonepanel .recaplinks{padding:18px;margin:20px 0 24px}.recaplinks-grid{grid-template-columns:1fr;gap:10px}.standalonepanel a.recaplinks-card{min-height:88px;padding:16px}.standalonepanel .recaplinks-heading h2{font-size:20px}}
+</style>';
 if($view==='account')$css.='<style>#profileDialog.standalonepanel .profilemodal{max-height:none;overflow:visible;padding-top:24px}.standalonepanel .accountheading{padding-right:0;align-items:center}.standalonepanel .accountheading h2{font-size:26px;line-height:1.2;margin:0}.standalonepanel .accountheading .accountsignout{flex-shrink:0}@media(max-width:720px){.standalonepanel .accountheading h2{font-size:23px}}</style>';
 if($view==='leagues'&&($selectedLeagueId||isset($_GET['global']))){
  $css.='<style>.main>aside{display:block}.main>#leaguesDialog{display:none}.main>aside>.promo{display:none}.main>aside>#leader{border:0;background:transparent;padding:24px 28px 28px}@media(max-width:720px){.main>aside>#leader{padding:20px 16px 24px}}.main>aside>#leader>.head{display:block;padding:0 0 18px}.main>aside>#leader>.side{padding:0}.flowhome{display:none!important}</style>';

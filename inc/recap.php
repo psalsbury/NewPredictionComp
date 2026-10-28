@@ -50,5 +50,5 @@ function recapData(PDO $db,array $ids):array{
  return $s;
 }
 function recapLinks():string{
- return '<section class="performancepanel"><h2>Real-player recaps</h2><p>Who made the best call? Discover the standout predictions, points leaders and toughest matches.</p><p><a class="btn" href="/recap?period=week">Weekly recap →</a> <a class="ghost" href="/recap?period=month">This month’s recap →</a></p></section>';
+ return '<section class="recaplinks" aria-labelledby="recapLinksTitle"><div class="recaplinks-heading"><h2 id="recapLinksTitle">Real-player recaps</h2><p>Standout predictions, points leaders and the toughest matches.</p></div><div class="recaplinks-grid"><a class="recaplinks-card" href="/recap?period=week"><span class="recaplinks-copy"><strong>Weekly recap</strong><span>Highlights from the latest gameweek</span></span><span class="recaplinks-arrow" aria-hidden="true">→</span></a><a class="recaplinks-card" href="/recap?period=month"><span class="recaplinks-copy"><strong>Monthly recap</strong><span>Highlights from the current month</span></span><span class="recaplinks-arrow" aria-hidden="true">→</span></a></div></section>';
 }
