@@ -135,3 +135,11 @@ python3 -m unittest discover -s tests -p 'test_bot_strategy.py'
 python3 bin/bot_backtest.py
 python3 bin/simulated_players.py --dry-run --no-gameweek-refresh --no-archive-fetch
 ```
+
+### Backtest fixture identity
+
+The read-only backtest maps stored results to their native external fixture IDs using the same canonical teams and UTC calendar date as the strategy's archive deduplication. This allows stored pre-match odds to be found. Archive-only matches use a namespaced deterministic fallback and form-only forecasts. Observed and fetched odds timestamps must both precede the forecast cutoff; the strategy's existing stale-price rules still apply.
+
+This is a kickoff-time walk-forward model evaluation using synthetic player identities. It does not replay historical saved picks, earlier saving times, or gameweek uniqueness adjustments. It is not an exact reproduction of the live fleet's historical scores.
+
+Regression checks: `python3 -m unittest discover -s tests -p 'test_bot_backtest.py'`.
