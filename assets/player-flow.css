@@ -4,3 +4,5 @@
 @media(min-width:721px){#predict .fixture .score{position:relative;padding-bottom:30px}#predict .fixture .score .desktopsave{position:absolute;left:0;bottom:0;width:100%;height:25px;padding:3px;line-height:18px;font-size:11px}}
 
 .flowstats>.flowstat{display:block;min-width:0;text-decoration:none;transition:background .15s,border-color .15s}.flowstats>.flowstat:hover{background:#173b30;border-color:#85e5aa}.flowstats>.flowstat:focus-visible{outline:2px solid #f4c542;outline-offset:3px}.flowstats>.flowstat span::after{content:" →";color:#a6efc0}@media(max-width:650px){.flowstats>.flowstat{display:flex}}
+
+.homefeatureactions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:min(100%,520px)}.homefeatureactions a.btn,.homefeatureactions a.ghost{min-width:0;min-height:52px;padding:12px 14px;line-height:1.35;font-size:15px;font-weight:700;white-space:normal;text-align:center}.flownext>.homefeatureactions+span{flex-basis:100%}.visitor .heroactions>.homefeatureactions{width:min(100%,520px)}
