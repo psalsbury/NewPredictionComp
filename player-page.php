@@ -43,11 +43,12 @@ if($view==='results'&&$uid>0){
  $html=str_replace('<div class="resulttabs"',dataFreshnessHtml($db).recapLinks().'<div class="resulttabs"',$html);
  $oddsTab='<button type="button" id="oddsTab" role="tab" aria-controls="oddsPanel" aria-selected="false" tabindex="-1" onclick="showResultsTab(\'odds\')">£1 a match</button>';
  $html=preg_replace_callback('/(<button\b[^>]*id="matchesTab"[^>]*>.*?<\/button>)/s',fn($m)=>$m[1].$oddsTab,$html,1);
- $oddsPanel='<section id="oddsPanel" class="performancebody" role="tabpanel" aria-labelledby="oddsTab" hidden>'.renderPersonalOddsResults(personalOddsResults($db,$uid,$seasonYear)).'</section>';
+ $oddsPeriods=personalOddsPeriods($db,$uid,$seasonYear,is_string($_GET['odds_period']??null)?$_GET['odds_period']:'');
+ $oddsPanel='<section id="oddsPanel" class="performancebody" role="tabpanel" aria-labelledby="oddsTab" hidden>'.renderPersonalOddsSelector($oddsPeriods).renderPersonalOddsResults(personalOddsResults($db,$uid,$seasonYear,$oddsPeriods['selected']),$oddsPeriods['selected']['label']).'</section>';
  $html=str_replace('<section id="performancePanel"',$oddsPanel.'<section id="performancePanel"',$html);
 }
 $script='<script>selectPlayerTab('.json_encode($view).');';
-if($view==='results'&&$uid>0)$script.="showResultsTab('matches');";
+if($view==='results'&&$uid>0)$script.='showResultsTab('.json_encode(($_GET['tab']??'')==='odds'?'odds':'matches').');';
 if($target==='leaguesDialog')$script.='function closeLeagues(){}function openLeagues(){document.getElementById("leaguesDialog").scrollIntoView({block:"start"});selectPlayerTab("leagues")}';
 $script.='document.querySelectorAll(".playernav a").forEach(a=>a.removeAttribute("onclick"));';
 if($view==='leagues'&&($selectedLeagueId||isset($_GET['global'])))$script.='document.querySelectorAll("#leader button.leagueviewbtn").forEach(b=>{b.textContent="Manage league"});';
