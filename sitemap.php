@@ -18,7 +18,7 @@ $latestUpTo=function(string $team,string $upTo)use($teamDays):string{$best='';fo
 $fixDate=[];
 foreach($fx as $r){$k=substr($r['kickoff_utc'],0,10);$upTo=min($k,date('Y-m-d'));$d=max($latestUpTo($r['home'],$upTo),$latestUpTo($r['away'],$upTo));if($d==='')$d=$firstDay;$fixDate[$r['id']]=$d;}
 $infoDate=date('Y-m-d',(int)filemtime(__DIR__.'/info.php'));
-foreach(['/','/clubs','/fixtures','/results','/table','/prediction-guides'] as $path)url($path,max($lastResult,date('Y-m-d',(int)filemtime(__DIR__.($path==='/'?'/templates/home.php':'/public.php')))));
+foreach(['/','/clubs','/fixtures','/results','/table','/prediction-guides','/can-you-beat-sim1'] as $path)url($path,max($lastResult,date('Y-m-d',(int)filemtime(__DIR__.($path==='/'?'/templates/home.php':'/public.php')))));
 foreach(['/about','/beat-the-bots','/how-it-works','/privacy','/contact'] as $path)url($path,$infoDate);
 $clubDates=[];foreach($played as $r)foreach([$r['home'],$r['away']] as $t){$t=pcClubName($t,$db);$d=substr($r['kickoff_utc'],0,10);if(($clubDates[$t]??'')<$d)$clubDates[$t]=$d;}
 foreach(pcSeasonClubs($db) as $team)url('/clubs/'.slug($team),$clubDates[$team]??$firstDay);

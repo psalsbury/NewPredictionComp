@@ -75,13 +75,14 @@ if($kind==='club'&&$club){
  if($rows){$n=$rows[0];$clubSummary.=' Next up: '.$n['home'].' v '.$n['away'].' on '.(new DateTimeImmutable($n['kickoff_utc'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('Europe/London'))->format('D j M, H:i').' UK time.';}
  $clubSummary=trim($clubSummary);
 }
-if($kind==='table'){
+if($kind==='table'||$kind==='sim1'){
  require __DIR__.'/standings.php';
  $seasonYear=pcSeasonYear();
  $standings=leagueStandings($db,$seasonYear.'-07-01T00:00:00Z',($seasonYear+1).'-07-01T00:00:00Z');
  $lastDone=$db->query("SELECT kickoff_utc FROM fixtures WHERE status IN ('FT','AET','PEN') AND home_score IS NOT NULL ORDER BY julianday(kickoff_utc) DESC LIMIT 1")->fetchColumn();$simWeek=[];$simWeekLabel='';
  if($lastDone){$wk=weekKey((string)$lastDone);$simWeekLabel='Week of '.date('j M',strtotime($wk));$simWeek=pcWeekFixtures($db,$wk);}
  $title='Premier League table '.$seasonYear.'/'.substr((string)($seasonYear+1),2);$path='/table';$description='Premier League standings calculated from completed results on PredictionComp, including points, goal difference and recent form.';
+ if($kind==='sim1'){$title='Can you beat SIM1?';$path='/can-you-beat-sim1';$description='Take on our strongest computer players. Predict Premier League scores for free and see who can beat the best SIM1 bot.';}
 }
 
 
@@ -185,7 +186,21 @@ body>main a.matchrow:hover,body>main a.matchrow:focus-visible{background:var(--i
 })();
 </script>
 <?php elseif($kind==='table'):?><p class="tablenote">Calculated from <?=$standings['matches']?> completed league matches stored for this season. The table updates as results are recorded.</p><div class="standingswrap"><table class="standings"><caption class="sr-only">Premier League standings based on stored results</caption><thead><tr><th scope="col">#</th><th scope="col" class="clubcol">Club</th><th scope="col"><abbr title="Played">P</abbr></th><th scope="col" class="extended"><abbr title="Won">W</abbr></th><th scope="col" class="extended"><abbr title="Drawn">D</abbr></th><th scope="col" class="extended"><abbr title="Lost">L</abbr></th><th scope="col" class="extended"><abbr title="Goals for">GF</abbr></th><th scope="col" class="extended"><abbr title="Goals against">GA</abbr></th><th scope="col"><abbr title="Goal difference">GD</abbr></th><th scope="col">Pts</th><th scope="col" class="formcol">Form</th></tr></thead><tbody><?php foreach($standings['rows'] as $r):?><tr><td><?=$r['position']?></td><th scope="row"><a class="tableclub" href="/clubs/<?=e(slug($r['team']))?>"><img src="/club-logo.php?team=<?=urlencode($r['team'])?>" alt="" width="24" height="24" loading="lazy"><span><?=e($r['team'])?></span></a></th><td><?=$r['p']?></td><?php foreach(['w','d','l','gf','ga'] as $stat):?><td class="extended"><?=$r[$stat]?></td><?php endforeach;?><td><?=$r['gd']>0?'+':''?><?=$r['gd']?></td><td class="tablepoints"><?=$r['pts']?></td><td class="formcol"><span class="tableform" aria-label="<?=e(implode(', ',array_map(fn($v)=>['W'=>'Win','D'=>'Draw','L'=>'Loss'][$v],$r['form'])))?>"><?php foreach($r['form'] as $result):?><span class="form<?=$result?>" aria-hidden="true"><?=$result?></span><?php endforeach;?></span></td></tr><?php endforeach;?></tbody></table></div><p class="note">3 points for a win, 1 for a draw. Sorted by points, goal difference, then goals scored; clubs tied on all three share a position. Form runs oldest to newest.</p><p class="note">Based on recorded results only. Missing results and any official points deductions are not reflected.</p>
-<?php beatSim1Block($db,$simWeek,'Can you beat SIM1?',$simWeekLabel);?>
+<section class="panel beatsim1"><h2>Can you beat SIM1?</h2><p>Take on our strongest computer players and see who is beating the best SIM1 bot.</p><a class="cta" href="/can-you-beat-sim1">Explore the SIM1 challenge →</a></section>
+<?php elseif($kind==='sim1'):?>
+<section class="panel"><p class="lede">Your football instinct against our strongest computer players. Predict the Premier League scores and see if you can outscore the best SIM1 bot.</p><a class="cta" href="/#predict">Take on SIM1 — make your predictions</a><p class="note">Free to play. No sign-up needed to get started. Your usual predictions count automatically.</p></section>
+<h2>The toughest bots. A fresh challenge.</h2><p>SIM1 is the strongest of our five computer-player levels. These bots use team strength, recent results, home and away form, and available pre-match odds to make their picks. They can still get it wrong. That is your chance to beat them.</p>
+<div class="grid">
+<section class="panel"><h2>1. Make your picks</h2><p>Save a score for each upcoming match before kick-off. You can change it until that match starts. The same picks count for your friends leagues and the SIM1 challenge.</p></section>
+<section class="panel"><h2>2. Earn your points</h2><p><strong>5 points</strong> for an exact score, <strong>3</strong> for the correct winner or draw, otherwise <strong>0</strong>. An exact score earns 5 points in total.</p></section>
+<section class="panel"><h2>3. Beat the best</h2><p>Score more points than the highest-scoring SIM1 bot over the matches in the comparison. Equal points means a tie. Can you finish ahead?</p></section></div>
+<h2>Latest SIM1 challenge</h2>
+<?php if(beatSim1Data($db,$simWeek)):?>
+<?php beatSim1Block($db,$simWeek,'Players vs the best SIM1 bot',$simWeekLabel);?>
+<p class="note">This comparison uses the latest week with a finished match, grouped Friday to Thursday in UK time. Only finished matches whose prediction points have been recorded count. Scores can change while the week is in progress; postponed, cancelled and abandoned matches are excluded from completion. Players with fewer picks may have fewer scoring opportunities. Up to ten eligible players are shown.</p>
+<?php else:?><section class="panel"><p>The first comparison will appear once matches have finished and SIM1 points have been recorded. Make your predictions now to join the challenge.</p></section><?php endif;?>
+<h2>Fair play, same rules</h2><p>Everyone earns points the same way. SIM1 exact score predictions stay hidden until kick-off, when picks lock. There are several SIM1 bots: the challenge compares players with the best score among them, and also shows the SIM1 average.</p><p>New guests are counted in the comparison, but their names appear publicly only after they qualify for the global table by predicting in two matchweeks or adding an email.</p>
+<p><a href="/beat-the-bots">Meet all five bot levels</a> · <a href="/how-it-works">Read the full game rules</a> · <a href="/prediction-guides">Plan your next predictions</a></p><a class="cta" href="/#predict">Ready to beat SIM1? Predict now →</a>
 <?php elseif($kind==='league'):?><?php
  $done=fn($f)=>in_array($f['status'],['FT','AET','PEN'],true)&&$f['home_score']!==null&&$f['away_score']!==null;
  $started=array_values(array_filter($leagueWeek,fn($f)=>strtotime($f['kickoff_utc'])<=time()));
