@@ -84,6 +84,12 @@ if($kind==='table'||$kind==='sim1'){
  $title='Premier League table '.$seasonYear.'/'.substr((string)($seasonYear+1),2);$path='/table';$description='Premier League standings calculated from completed results on PredictionComp, including points, goal difference and recent form.';
  if($kind==='sim1'){$title='Can you beat SIM1?';$path='/can-you-beat-sim1';$description='Take on our strongest computer players. Predict Premier League scores for free and see who can beat the best SIM1 bot.';}
 }
+if($kind==='sim1'){
+ require_once __DIR__.'/inc/sim1-periods.php';
+ $simPeriods=sim1Periods($db,$seasonYear,is_string($_GET['period']??null)?$_GET['period']:'');
+ $simWeek=$simPeriods['selected']['rows'];$simWeekLabel=$simPeriods['selected']['label'];
+}
+
 
 
 if($kind==='guides'||$kind==='guide'){
@@ -188,9 +194,10 @@ body>main a.matchrow:hover,body>main a.matchrow:focus-visible{background:var(--i
 <?php elseif($kind==='table'):?><p class="tablenote">Calculated from <?=$standings['matches']?> completed league matches stored for this season. The table updates as results are recorded.</p><div class="standingswrap"><table class="standings"><caption class="sr-only">Premier League standings based on stored results</caption><thead><tr><th scope="col">#</th><th scope="col" class="clubcol">Club</th><th scope="col"><abbr title="Played">P</abbr></th><th scope="col" class="extended"><abbr title="Won">W</abbr></th><th scope="col" class="extended"><abbr title="Drawn">D</abbr></th><th scope="col" class="extended"><abbr title="Lost">L</abbr></th><th scope="col" class="extended"><abbr title="Goals for">GF</abbr></th><th scope="col" class="extended"><abbr title="Goals against">GA</abbr></th><th scope="col"><abbr title="Goal difference">GD</abbr></th><th scope="col">Pts</th><th scope="col" class="formcol">Form</th></tr></thead><tbody><?php foreach($standings['rows'] as $r):?><tr><td><?=$r['position']?></td><th scope="row"><a class="tableclub" href="/clubs/<?=e(slug($r['team']))?>"><img src="/club-logo.php?team=<?=urlencode($r['team'])?>" alt="" width="24" height="24" loading="lazy"><span><?=e($r['team'])?></span></a></th><td><?=$r['p']?></td><?php foreach(['w','d','l','gf','ga'] as $stat):?><td class="extended"><?=$r[$stat]?></td><?php endforeach;?><td><?=$r['gd']>0?'+':''?><?=$r['gd']?></td><td class="tablepoints"><?=$r['pts']?></td><td class="formcol"><span class="tableform" aria-label="<?=e(implode(', ',array_map(fn($v)=>['W'=>'Win','D'=>'Draw','L'=>'Loss'][$v],$r['form'])))?>"><?php foreach($r['form'] as $result):?><span class="form<?=$result?>" aria-hidden="true"><?=$result?></span><?php endforeach;?></span></td></tr><?php endforeach;?></tbody></table></div><p class="note">3 points for a win, 1 for a draw. Sorted by points, goal difference, then goals scored; clubs tied on all three share a position. Form runs oldest to newest.</p><p class="note">Based on recorded results only. Missing results and any official points deductions are not reflected.</p>
 <section class="panel beatsim1"><h2>Can you beat SIM1?</h2><p>Take on our strongest computer players and see who is beating the best SIM1 bot.</p><a class="cta" href="/can-you-beat-sim1">Explore the SIM1 challenge →</a></section>
 <?php elseif($kind==='sim1'):?>
+<?=renderSim1Periods($simPeriods)?>
 <?php if(beatSim1Data($db,$simWeek)):?>
 <?php beatSim1Block($db,$simWeek,'Players vs the best SIM1 bot',$simWeekLabel);?>
-<?php else:?><section class="panel beatsim1"><h2>Players vs the best SIM1 bot</h2><p>The comparison will appear once matches have finished and SIM1 points have been recorded.</p></section><?php endif;?>
+<?php else:?><section class="panel beatsim1"><h2>Players vs the best SIM1 bot</h2><p>No comparison is available for this period yet. It will appear once matches have finished and SIM1 points have been recorded.</p></section><?php endif;?>
 <?php elseif($kind==='league'):?><?php
  $done=fn($f)=>in_array($f['status'],['FT','AET','PEN'],true)&&$f['home_score']!==null&&$f['away_score']!==null;
  $started=array_values(array_filter($leagueWeek,fn($f)=>strtotime($f['kickoff_utc'])<=time()));
