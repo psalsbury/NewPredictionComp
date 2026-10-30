@@ -92,3 +92,11 @@ body .standings th:last-child,body .standings td:last-child,.leaguetable th:last
   body .standings th:first-child,body .standings td:first-child,.leaguetable th:first-child,.leaguetable td:first-child{padding-left:14px}
   body .standings th:last-child,body .standings td:last-child,.leaguetable th:last-child,.leaguetable td:last-child{padding-right:14px}
 }
+
+/* Centre desktop footer links, disclaimer and sister-site line as one block. */
+@media(min-width:721px){
+ body>footer,body>.footer{box-sizing:border-box;width:100%;max-width:1200px;margin-inline:auto;text-align:center}
+ body>footer>nav,body>.footer>.footerlinks{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;margin-inline:auto}
+ body>footer>nav>a:first-child{margin-right:0}
+ body>footer>.sistersite{margin-inline:auto!important}
+}
