@@ -1,0 +1,14 @@
+[Unit]
+Description=PredictionComp live scores for matches in progress (display only)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+ExecStart=/usr/bin/python3 /opt/predictioncomp/bin/live_scores.py
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/predictioncomp /var/cache/predictioncomp
+PrivateTmp=true
+NoNewPrivileges=true

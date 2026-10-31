@@ -3,16 +3,30 @@ declare(strict_types=1);
 // Database, the current player (from the pc_token cookie) and shared helpers.
 session_start();
 $db=new PDO('sqlite:'.pc_db_path());$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
-function pc_front_result(array $f,?array $pick):string{
+function pc_front_result(array $f,?array $pick,?array $live=null):string{
  $finished=in_array($f['status'],['FT','AET','PEN'],true)&&$f['home_score']!==null&&$f['away_score']!==null;
  $class='pending';$label='Awaiting result';$points='';
+ // Live score (display only): what the pick would earn if the match ended now. Points come from the confirmed result.
+ $attrs=' data-live-fixture="'.(int)$f['id'].'"'.($pick!==null?' data-pick="'.(int)$pick[0].'-'.(int)$pick[1].'"':'');
+ if(!$finished&&$live!==null){
+  $lh=(int)$live['home_score'];$la=(int)$live['away_score'];$clock=(string)$live['clock'];
+  $html='<div class="frontresult live'.($pick===null?' missing':'').'"'.$attrs.'>';
+  if($pick!==null){
+   $exact=(int)$pick[0]===$lh&&(int)$pick[1]===$la;$correct=((int)$pick[0]<=>(int)$pick[1])===($lh<=>$la);
+   $html='<div class="frontresult live '.($exact?'exact':($correct?'correct':'wrong')).'"'.$attrs.'>';
+   $html.='<span class="frontpick"><small>Your pick</small><b>'.(int)$pick[0].'–'.(int)$pick[1].'</b></span>';
+   $note=($clock==='FT'?'Full time · ':'').'On course for '.($exact?'+5':($correct?'+3':'+0'));
+  }else{$html.='<span class="frontpick"><small>No pick</small><b>—</b></span>';$note=$clock==='FT'?'Full time · confirming':'No prediction';}
+  $html.='<span class="frontactual"><small class="liveclock">'.($clock==='FT'||$clock==='HT'?htmlspecialchars($clock):'Live '.htmlspecialchars($clock)).'</small><b>'.$lh.'–'.$la.'</b></span>';
+  return $html.'<small class="frontoutcome">'.htmlspecialchars($note).'</small></div>';
+ }
  if($finished&&$pick!==null){
   $exact=(int)$pick[0]===(int)$f['home_score']&&(int)$pick[1]===(int)$f['away_score'];
   $correct=((int)$pick[0]<=>(int)$pick[1])===((int)$f['home_score']<=>(int)$f['away_score']);
   $class=$exact?'exact':($correct?'correct':'wrong');
   $label=$exact?'Exact score':($correct?'Correct result':'Incorrect result');$points=$exact?' +5':($correct?' +3':' +0');
  }elseif($pick===null){$label='No prediction';$class='missing';}
- $html='<div class="frontresult '.$class.'">';
+ $html='<div class="frontresult '.$class.'"'.($finished?'':$attrs).'>';
  if($pick!==null)$html.='<span class="frontpick" aria-label="'.$label.$points.' points"><small>Your pick</small><b>'.(int)$pick[0].'–'.(int)$pick[1].'</b></span>';
  else $html.='<span class="frontpick"><small>No pick</small><b>—</b></span>';
  $html.='<span class="frontactual"><small>'.($finished?'Final':'Result').'</small><b>'.($finished?(int)$f['home_score'].'–'.(int)$f['away_score']:'—').'</b></span>';

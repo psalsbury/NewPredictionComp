@@ -1,0 +1,9 @@
+[Unit]
+Description=Check PredictionComp live scores every minute (no network unless a match is in progress)
+
+[Timer]
+OnCalendar=*:*:20
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

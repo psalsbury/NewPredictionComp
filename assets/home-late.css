@@ -118,3 +118,10 @@ body>.footer p{max-width:900px;margin:8px auto}
  #predict .fixture .score:has(.mobilepick){padding-bottom:0}
  #predict .fixture .score:has(.mobilepick)>.desktopsave{display:none}
 }
+
+/* Live scores */
+#predict .frontresult.live .frontactual small.liveclock{color:var(--red,#f87171);font-weight:700;letter-spacing:.04em}
+#predict .frontresult.live .liveclock:before{content:"";display:inline-block;width:6px;height:6px;margin-right:5px;border-radius:50%;background:currentColor;vertical-align:1px;animation:pclive 1.6s ease-in-out infinite}
+#predict .frontresult.live .frontpick{border-style:dashed}
+@keyframes pclive{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){#predict .frontresult.live .liveclock:before{animation:none}}

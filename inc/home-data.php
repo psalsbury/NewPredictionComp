@@ -29,6 +29,9 @@ $nextFixtureWeek=$weekIndex!==false&&isset($weekNumbers[$weekIndex+1])?$weekNumb
 $q=$db->prepare('SELECT f.* FROM fixtures f JOIN fixture_gameweeks g ON g.fixture_id=f.id WHERE g.season=? AND g.gameweek=? ORDER BY julianday(f.kickoff_utc),f.id');
 $q->execute([$fixtureSeason,$selectedFixtureWeek]);$fixtures=$q->fetchAll(PDO::FETCH_ASSOC);
 $fixtureCount=count($fixtures);$fixturePage=0;
+// Live scores for matches in progress (filled every minute by live_scores.py; display only).
+$liveScores=[];
+if($fixtures){try{$ids=implode(',',array_map(fn($f)=>(int)$f['id'],$fixtures));foreach($db->query("SELECT * FROM live_scores WHERE fixture_id IN ($ids)") as $r)$liveScores[(int)$r['fixture_id']]=$r;}catch(Throwable $e){$liveScores=[];}}
 $fixtureWeekRange='';
 if($fixtures){$first=(new DateTimeImmutable($fixtures[0]['kickoff_utc']))->setTimezone(new DateTimeZone('Europe/London'));$last=(new DateTimeImmutable($fixtures[count($fixtures)-1]['kickoff_utc']))->setTimezone(new DateTimeZone('Europe/London'));$fixtureWeekRange=$first->format('D j M').($first->format('Y-m-d')!==$last->format('Y-m-d')?' – '.$last->format('D j M'):'');}
 // First-time visitors on a plain homepage see the next three open matches; the rest are one tap away.

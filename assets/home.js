@@ -40,3 +40,39 @@ function reminderNudgeDismissed(){try{return localStorage.getItem('pcReminderNud
 function dismissReminderNudge(){try{localStorage.setItem('pcReminderNudge','hidden')}catch(e){}const n=document.getElementById('reminderNudge');if(n)n.hidden=true}
 async function enableReminders(b){const t=document.getElementById('reminderNudgeText');b.disabled=true;b.textContent='Saving…';try{const j=await api('reminders',{on:true,lead_hours:24,csrf:PC.csrf});t.textContent=j.status==='verify_sent'?'Check your inbox at '+j.email+' and click the link to confirm. Reminders start once you do.':'✓ Reminders are on. Change the timing any time in your account.';b.hidden=true}catch(e){t.textContent=e.message;b.disabled=false;b.textContent='Email me reminders'}}
 (()=>{const n=document.getElementById('reminderNudge');if(n&&!reminderNudgeDismissed())n.hidden=false})();
+
+// Live scores: while a match on this page is in progress, refresh its score every minute (no page reload).
+(function(){
+ const boxes=()=>[...document.querySelectorAll('.frontresult[data-live-fixture]')];
+ // A match that kicks off while the page is open: swap its score inputs for a live box.
+ function ensureBoxes(){document.querySelectorAll('[data-fixture-id][data-kickoff]').forEach(row=>{
+  if(fixtureKickoffMillis(row.dataset.kickoff)>Date.now()||row.querySelector('.frontresult,.fixturestatus'))return;
+  const sc=row.querySelector('.score');if(!sc)return;const id=Number(row.dataset.fixtureId),ins=sc.querySelectorAll('input');
+  const box=document.createElement('div');box.className='frontresult pending';box.dataset.liveFixture=id;
+  if(typeof matchweekSaved!=='undefined'&&matchweekSaved.has(id)&&ins.length===2)box.dataset.pick=Number(ins[0].value)+'-'+Number(ins[1].value);
+  box.innerHTML=(box.dataset.pick?'<span class="frontpick"><small>Your pick</small><b>'+box.dataset.pick.replace('-','–')+'</b></span>':'<span class="frontpick"><small>No pick</small><b>—</b></span>')+'<span class="frontactual"><small>Result</small><b>—</b></span><small class="frontoutcome">Awaiting kick-off data</small>';
+  sc.replaceChildren(box);})}
+ const soon=[...document.querySelectorAll('[data-fixture-id][data-kickoff]')].some(r=>{const t=fixtureKickoffMillis(r.dataset.kickoff),n=Date.now();return t>n-3*3600e3&&t<n+12*3600e3});
+ if(!boxes().length&&!soon)return;
+ const outcome=(h,a)=>(h>a)-(h<a);
+ function paint(box,s){
+  const id=box.dataset.liveFixture,pick=box.dataset.pick?box.dataset.pick.split('-').map(Number):null;
+  if(s.final){location.reload();return}
+  const exact=pick&&pick[0]===s.h&&pick[1]===s.a,correct=pick&&outcome(pick[0],pick[1])===outcome(s.h,s.a);
+  box.className='frontresult live '+(pick?(exact?'exact':correct?'correct':'wrong'):'missing');
+  const pickHtml=pick?'<span class="frontpick"><small>Your pick</small><b>'+pick[0]+'–'+pick[1]+'</b></span>':'<span class="frontpick"><small>No pick</small><b>—</b></span>';
+  const clock=s.clock==='FT'||s.clock==='HT'?s.clock:'Live '+s.clock;
+  const note=pick?(s.clock==='FT'?'Full time · ':'')+'On course for '+(exact?'+5':correct?'+3':'+0'):(s.clock==='FT'?'Full time · confirming':'No prediction');
+  box.innerHTML=pickHtml+'<span class="frontactual"><small class="liveclock"></small><b>'+s.h+'–'+s.a+'</b></span><small class="frontoutcome"></small>';
+  box.querySelector('.liveclock').textContent=clock;box.querySelector('.frontoutcome').textContent=note;
+  const state=document.querySelector('[data-fixture-id="'+Number(id)+'"] [data-pick-status]');
+  if(state&&s.clock==='FT')state.textContent='Full time';
+ }
+ async function poll(){
+  if(document.hidden)return;ensureBoxes();
+  const ids=boxes().map(b=>Number(b.dataset.liveFixture)).filter(Boolean);if(!ids.length)return;
+  try{const r=await fetch('/live.php?ids='+ids.join(','),{cache:'no-store'});if(!r.ok)return;const j=await r.json();
+   boxes().forEach(b=>{const s=j[b.dataset.liveFixture];if(s)paint(b,s)});}catch(e){}
+ }
+ setInterval(poll,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll()});
+})();
