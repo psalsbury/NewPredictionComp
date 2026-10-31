@@ -113,6 +113,11 @@ if($leaderFocusMe&&!$selectedLeagueId){
 $leaderStmt=$db->prepare($leaderSql);
 $leaderStmt->execute([':period_start'=>$leaderStart->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),':period_end'=>$leaderEnd->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s')]);
 $leaders=$leaderStmt->fetchAll(PDO::FETCH_ASSOC);
+// Live table (matches in progress) and the "Share your week" card.
+require_once PC_ROOT.'/inc/live-table.php';
+require_once PC_ROOT.'/inc/week-card.php';
+$liveTable=pcLiveTable($db,$uid,$selectedLeagueId,$leaderStart,$leaderEnd);
+$weekCard=pcWeekCard($db,$uid,$user,$fixtureSeason,$selectedFixtureWeek,$myLeagues,$seasonStart,$seasonEnd);
 $friendProgress=null;
 if($selectedLeagueId){
  $friendProgress=friendLeagueProgress($db,$selectedLeagueId,$uid,$leaderStart,$leaderEnd);

@@ -76,3 +76,19 @@ async function enableReminders(b){const t=document.getElementById('reminderNudge
  }
  setInterval(poll,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll()});
 })();
+
+// Live league table: refresh every minute while matches are on (or about to start).
+(function(){
+ const leader=document.getElementById('leader');if(!leader||!window.PC)return;
+ const soon=[...document.querySelectorAll('[data-fixture-id][data-kickoff]')].some(r=>{const t=fixtureKickoffMillis(r.dataset.kickoff),n=Date.now();return t>n-3*3600e3&&t<n+12*3600e3});
+ if(!document.getElementById('liveTable')&&!soon)return;
+ async function refresh(){
+  if(document.hidden)return;
+  try{const r=await fetch('/live-table.php?league='+Number(PC.leagueId||0)+'&period='+encodeURIComponent(PC.leaderPeriod),{cache:'no-store',credentials:'same-origin'});if(!r.ok)return;
+   const html=(await r.text()).trim(),box=document.getElementById('liveTable');
+   if(box){if(html)box.outerHTML=html;else box.remove()}
+   else if(html){const cols=leader.querySelector('.leadercolumns');if(cols)cols.insertAdjacentHTML('beforebegin',html)}
+  }catch(e){}
+ }
+ setInterval(refresh,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});
+})();
