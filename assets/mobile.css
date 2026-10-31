@@ -25,7 +25,13 @@
  .weekarrow{width:38px!important;height:38px!important;min-width:38px!important}
  .matchweeksummary{padding:10px 14px!important}
  /* Match cards: less height, slimmer odds */
- #predict .fixture{padding-top:12px!important;padding-bottom:12px!important;row-gap:8px!important}
+ /* Match cards: each badge sits above its club name, so long names get the full width */
+ #predict .fixture{grid-template-columns:minmax(0,1fr) 112px minmax(0,1fr)!important;grid-template-areas:"date date date" "home score away" "odds odds odds"!important;column-gap:10px!important;row-gap:12px!important;padding:18px 14px 20px!important;align-items:center!important}
+ #predict .fixture>.date{grid-area:date!important}#predict .fixture>.home{grid-area:home!important}#predict .fixture>.score{grid-area:score!important}#predict .fixture>.away{grid-area:away!important}#predict .fixture>.matchodds{grid-area:odds!important;padding:0!important}
+ #predict .fixture .team{align-self:start!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;text-align:center!important;gap:7px!important;font-size:15px!important;line-height:1.2!important;min-width:0}
+ #predict .fixture .team img{order:-1;width:34px!important;height:34px!important;flex:0 0 auto!important}
+ #predict .fixture .team .clubnamelink{display:block;max-width:100%}
+ #predict .fixture .mobilepick{width:100%!important}
  .matchodds{margin-top:2px!important}
  .oddsprices{gap:6px!important}
  .oddsprice{padding:4px 8px!important;font-size:11px!important;min-height:0!important;border-radius:7px!important}
