@@ -10,6 +10,11 @@ function recapPrice(array $r):?float{
  $p=(float)($r[$key]??0);
  return $k!==false&&$o!==false&&$f!==false&&$o<$k&&$f<$k&&is_finite($p)&&$p>1?$p:null;
 }
+function pcScorePrices(PDO $db,array $ids):array{
+ if(!$ids||!(bool)$db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='fixture_score_odds'")->fetchColumn())return [];
+ $out=[];foreach($db->query('SELECT s.fixture_id,s.home_goals,s.away_goals,s.price FROM fixture_score_odds s JOIN fixtures f ON f.id=s.fixture_id WHERE s.fixture_id IN ('.implode(',',array_map('intval',$ids)).') AND julianday(s.observed_at)<julianday(f.kickoff_utc)') as $r)$out[(int)$r['fixture_id']][$r['home_goals'].'-'.$r['away_goals']]=(float)$r['price'];
+ return $out;
+}
 function recapData(PDO $db,array $ids):array{
  $s=['players'=>[],'matches'=>[],'picks'=>0,'correct'=>0,'exact'=>0,'best'=>[],'rare'=>[],'exacts'=>[],'top'=>[],'table'=>[],'sharp'=>[],'sharpMin'=>3,'hard'=>[],'sim'=>null,'crowd'=>['called'=>0,'right'=>0]];
  if(!$ids)return $s;
@@ -23,6 +28,7 @@ function recapData(PDO $db,array $ids):array{
  $simAvg=[];
  foreach($db->query("SELECT f.id,f.home_score actual_home,f.away_score actual_away,p.home_score,p.away_score FROM predictions p JOIN users u ON u.id=p.user_id JOIN fixtures f ON f.id=p.fixture_id WHERE f.id IN ($ids) AND u.is_bot=1 AND u.bot_grade=1") as $b){$simAvg[(int)$b['id']][]=recapPoints($b);}
  foreach($simAvg as $fid=>$list)$simAvg[$fid]=array_sum($list)/count($list);
+ $csPrices=pcScorePrices($db,array_map('intval',explode(',',$ids)));
  $bestPrice=0;$exacts=[];$sim=['human'=>0,'bot'=>0,'picks'=>0];$calls=[];
  foreach($rows as $r){
   $uid=(int)$r['user_id'];$fid=(int)$r['id'];$pts=recapPoints($r);
@@ -35,7 +41,7 @@ function recapData(PDO $db,array $ids):array{
   $s['picks']++;$s['correct']+=(int)($pts>0);$s['exact']+=(int)($pts===5);
   $calls[$fid][(int)$r['home_score']<=>(int)$r['away_score']]=($calls[$fid][(int)$r['home_score']<=>(int)$r['away_score']]??0)+1;
   $price=recapPrice($r);
-  if($pts===5){$r['price']=$price;$exacts[$fid][]=$r;}
+  if($pts===5){$r['price']=$price;$r['cs']=$csPrices[$fid][$r['home_score'].'-'.$r['away_score']]??null;$exacts[$fid][]=$r;}
   if($pts>0&&$price!==null){
    $r['price']=$price;
    if($price>$bestPrice){$bestPrice=$price;$s['best']=[$r];}elseif($price===$bestPrice)$s['best'][]=$r;
@@ -60,8 +66,8 @@ function recapData(PDO $db,array $ids):array{
  foreach($calls as $fid=>$c){if(array_sum($c)<2)continue;arsort($c);$top=array_keys($c);if(count($c)>1&&$c[$top[0]]===$c[$top[1]])continue;
   $f=$s['matches'][$fid]['fixture'];$s['crowd']['called']++;$s['crowd']['right']+=(int)($top[0]===((int)$f['actual_home']<=>(int)$f['actual_away']));}
  // Every exact score gets credit; rarest first (lowest share of real players on that match who nailed it), then longest odds.
- foreach($exacts as $fid=>$entries){$total=$s['matches'][$fid]['picks'];$s['exacts'][]=['entries'=>$entries,'total'=>$total,'share'=>count($entries)/$total,'price'=>$entries[0]['price']??null];}
- usort($s['exacts'],fn($a,$b)=>[$a['share'],-($a['price']??0),-$a['total']]<=>[$b['share'],-($b['price']??0),-$b['total']]);
+ foreach($exacts as $fid=>$entries){$total=$s['matches'][$fid]['picks'];$s['exacts'][]=['entries'=>$entries,'total'=>$total,'share'=>count($entries)/$total,'price'=>$entries[0]['price']??null,'cs'=>$entries[0]['cs']??null];}
+ usort($s['exacts'],fn($a,$b)=>[$a['share'],-($a['cs']??0),-($a['price']??0),-$a['total']]<=>[$b['share'],-($b['cs']??0),-($b['price']??0),-$b['total']]);
  if($s['exacts']){$min=$s['exacts'][0]['share'];$s['rare']=array_values(array_filter($s['exacts'],fn($e)=>abs($e['share']-$min)<1e-9));}
  $qualified=array_filter($s['matches'],fn($m)=>$m['picks']>=3);
  if($qualified){$rate=min(array_map(fn($m)=>$m['correct']/$m['picks'],$qualified));$s['hard']=array_values(array_filter($qualified,fn($m)=>abs($m['correct']/$m['picks']-$rate)<1e-9));usort($s['hard'],fn($a,$b)=>$b['picks']<=>$a['picks']);}

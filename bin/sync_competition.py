@@ -189,6 +189,11 @@ def run_sync():
  night_key=f'season_refresh_attempt:{season}'
  last_night=c.execute('SELECT value FROM sync_meta WHERE key=?',(night_key,)).fetchone()
  night_due=uk_now.hour>=2 and (not last_night or last_night[0]!=uk_now.date().isoformat())
+ try:
+  from odds_sync import sync_score_odds
+  sync_score_odds(c)
+ except Exception as exc:
+  print('score_odds_unavailable',type(exc).__name__)
  if night_due:
   try:
    from odds_sync import sync_odds

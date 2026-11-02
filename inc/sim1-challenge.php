@@ -3,6 +3,7 @@ declare(strict_types=1);
 // "Can you beat SIM1?" page: real players v the five SIM1 (expert) bots, judged match by match.
 // The benchmark on each match is the SIM1 average, so players are only compared on matches they predicted.
 require_once __DIR__.'/listing.php';
+require_once __DIR__.'/recap.php';
 
 function sim1ChallengeData(PDO $db,array $rows):?array{
  $done=[];foreach($rows as $f)if(pcIsFinished($f)&&strtotime($f['kickoff_utc'])<=time()&&pcIsScored($db,(int)$f['id']))$done[(int)$f['id']]=$f;
@@ -21,13 +22,14 @@ function sim1ChallengeData(PDO $db,array $rows):?array{
  usort($squad,fn($a,$b)=>[$b['points'],$b['exact']]<=>[$a['points'],$a['exact']]);
  arsort($scorelines);
  $humans=$db->query("SELECT u.id,u.display_name,p.fixture_id,p.home_score,p.away_score,p.points FROM predictions p JOIN users u ON u.id=p.user_id WHERE p.fixture_id IN ($ids) AND COALESCE(u.is_bot,0)=0 AND p.points IS NOT NULL AND ".pc_listed_sql()." ORDER BY p.fixture_id,u.id")->fetchAll(PDO::FETCH_ASSOC);
+ $cs=pcScorePrices($db,array_keys($done));
  $players=[];$match=[];$giant=[];$hTotal=0;$sTotal=0.0;$cmp=0;
  foreach($humans as $h){$fid=(int)$h['fixture_id'];if(!isset($sim[$fid]))continue;$pts=(int)$h['points'];$avg=$sim[$fid]['avg'];
   $id=(int)$h['id'];if(!isset($players[$id]))$players[$id]=['name'=>$h['display_name'],'picks'=>0,'points'=>0,'sim'=>0.0,'w'=>0,'d'=>0,'l'=>0];
   $p=&$players[$id];$p['picks']++;$p['points']+=$pts;$p['sim']+=$avg;
   if($pts>$avg+1e-9)$p['w']++;elseif($pts<$avg-1e-9)$p['l']++;else $p['d']++;unset($p);
   $match[$fid]['h'][]=$pts;$hTotal+=$pts;$sTotal+=$avg;$cmp++;
-  if($pts>0&&$pts>$sim[$fid]['max'])$giant[]=['name'=>$h['display_name'],'fixture'=>$done[$fid],'pred'=>$h['home_score'].'–'.$h['away_score'],'pts'=>$pts,'simPick'=>$sim[$fid]['pick'],'simMax'=>$sim[$fid]['max']];
+  if($pts>0&&$pts>$sim[$fid]['max'])$giant[]=['name'=>$h['display_name'],'fixture'=>$done[$fid],'pred'=>$h['home_score'].'–'.$h['away_score'],'pts'=>$pts,'simPick'=>$sim[$fid]['pick'],'cs'=>$pts===5?($cs[$fid][$h['home_score'].'-'.$h['away_score']]??null):null,'simMax'=>$sim[$fid]['max']];
  }
  // Match-by-match scoreboard: the average real player v the average SIM1 bot on each match.
  $board=['humans'=>0,'level'=>0,'sim'=>0];
@@ -67,7 +69,7 @@ function renderSim1Challenge(PDO $db,array $rows,string $label,bool $ongoing):st
  $h.='<section class="panel s1card"><h2>Outsmarted SIM1</h2>';
  if(!$d['giant'])$h.='<p>Nobody has outscored every SIM1 bot on a match'.($ongoing?' yet':'').'.</p>';
  else{$h.='<p class="note">Predictions that beat all five SIM1 bots on the match.</p><ul class="s1list">';
-  foreach(array_slice($d['giant'],0,6) as $g)$h.='<li><strong>'.$e($g['name']).'</strong> '.($g['pts']===5?'<span class="s1badge">Exact</span> ':'').'predicted '.$e($g['pred']).' · '.$fx($g['fixture']).'<br><span class="note">'.$g['pts'].' points; SIM1 went '.$e($g['simPick']).' and scored '.($g['simMax']?'at most '.$g['simMax']:'nothing').'</span></li>';
+  foreach(array_slice($d['giant'],0,6) as $g)$h.='<li><strong>'.$e($g['name']).'</strong> '.($g['pts']===5?'<span class="s1badge">Exact</span> ':'').'predicted '.$e($g['pred']).' · '.$fx($g['fixture']).'<br><span class="note">'.$g['pts'].' points'.($g['cs']!==null?' at '.number_format($g['cs'],1).' for the exact score':'').'; SIM1 went '.$e($g['simPick']).' and scored '.($g['simMax']?'at most '.$g['simMax']:'nothing').'</span></li>';
   $h.='</ul>'.(count($d['giant'])>6?'<p class="note">…and '.(count($d['giant'])-6).' more.</p>':'');}
  $h.='</section>';
  $h.='<section class="panel s1card"><h2>SIM1’s blind spots</h2>';
