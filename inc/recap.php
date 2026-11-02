@@ -11,42 +11,60 @@ function recapPrice(array $r):?float{
  return $k!==false&&$o!==false&&$f!==false&&$o<$k&&$f<$k&&is_finite($p)&&$p>1?$p:null;
 }
 function recapData(PDO $db,array $ids):array{
- $s=['players'=>[],'matches'=>[],'picks'=>0,'correct'=>0,'exact'=>0,'best'=>[],'rare'=>[],'top'=>[],'sharp'=>[],'hard'=>[]];
+ $s=['players'=>[],'matches'=>[],'picks'=>0,'correct'=>0,'exact'=>0,'best'=>[],'rare'=>[],'exacts'=>[],'top'=>[],'table'=>[],'sharp'=>[],'sharpMin'=>3,'hard'=>[],'sim'=>null,'crowd'=>['called'=>0,'right'=>0]];
  if(!$ids)return $s;
+ $s['sharpMin']=max(3,(int)ceil(count($ids)/4));
  $ids=implode(',',array_map('intval',$ids));
  $odds=(bool)$db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='fixture_odds'")->fetchColumn();
  $prices=$odds?'o.home price_home,o.draw price_draw,o.away price_away,o.observed_at,o.fetched_at':'NULL price_home,NULL price_draw,NULL price_away,NULL observed_at,NULL fetched_at';
  $join=$odds?'LEFT JOIN fixture_odds o ON o.fixture_id=f.id':'';
  $rows=$db->query("SELECT u.id user_id,u.display_name,f.id,f.home,f.away,f.kickoff_utc,f.home_score actual_home,f.away_score actual_away,p.home_score,p.away_score,$prices FROM predictions p JOIN users u ON u.id=p.user_id JOIN fixtures f ON f.id=p.fixture_id $join WHERE f.id IN ($ids) AND COALESCE(u.is_bot,0)=0 AND ".pc_listed_sql()." AND f.status IN ('FT','AET','PEN') AND f.home_score IS NOT NULL AND f.away_score IS NOT NULL AND julianday(f.kickoff_utc)<=julianday('now') ORDER BY julianday(f.kickoff_utc),f.id,u.id")->fetchAll(PDO::FETCH_ASSOC);
- $bestPrice=0;$exacts=[];
+ // SIM1 average points per match, for the humans-v-bots comparison.
+ $simAvg=[];
+ foreach($db->query("SELECT f.id,f.home_score actual_home,f.away_score actual_away,p.home_score,p.away_score FROM predictions p JOIN users u ON u.id=p.user_id JOIN fixtures f ON f.id=p.fixture_id WHERE f.id IN ($ids) AND u.is_bot=1 AND u.bot_grade=1") as $b){$simAvg[(int)$b['id']][]=recapPoints($b);}
+ foreach($simAvg as $fid=>$list)$simAvg[$fid]=array_sum($list)/count($list);
+ $bestPrice=0;$exacts=[];$sim=['human'=>0,'bot'=>0,'picks'=>0];$calls=[];
  foreach($rows as $r){
   $uid=(int)$r['user_id'];$fid=(int)$r['id'];$pts=recapPoints($r);
-  if(!isset($s['players'][$uid]))$s['players'][$uid]=['name'=>$r['display_name'],'points'=>0,'picks'=>0,'correct'=>0,'exact'=>0];
-  $p=&$s['players'][$uid];$p['points']+=$pts;$p['picks']++;$p['correct']+=(int)($pts>0);$p['exact']+=(int)($pts===5);unset($p);
+  if(!isset($s['players'][$uid]))$s['players'][$uid]=['name'=>$r['display_name'],'points'=>0,'picks'=>0,'correct'=>0,'exact'=>0,'simPicks'=>0,'simDiff'=>0.0];
+  $p=&$s['players'][$uid];$p['points']+=$pts;$p['picks']++;$p['correct']+=(int)($pts>0);$p['exact']+=(int)($pts===5);
+  if(isset($simAvg[$fid])){$p['simPicks']++;$p['simDiff']+=$pts-$simAvg[$fid];$sim['human']+=$pts;$sim['bot']+=$simAvg[$fid];$sim['picks']++;}
+  unset($p);
   if(!isset($s['matches'][$fid]))$s['matches'][$fid]=['fixture'=>$r,'picks'=>0,'correct'=>0,'exact'=>0];
   $s['matches'][$fid]['picks']++;$s['matches'][$fid]['correct']+=(int)($pts>0);$s['matches'][$fid]['exact']+=(int)($pts===5);
   $s['picks']++;$s['correct']+=(int)($pts>0);$s['exact']+=(int)($pts===5);
-  if($pts===5)$exacts[$fid][]=$r;
+  $calls[$fid][(int)$r['home_score']<=>(int)$r['away_score']]=($calls[$fid][(int)$r['home_score']<=>(int)$r['away_score']]??0)+1;
   $price=recapPrice($r);
+  if($pts===5){$r['price']=$price;$exacts[$fid][]=$r;}
   if($pts>0&&$price!==null){
    $r['price']=$price;
    if($price>$bestPrice){$bestPrice=$price;$s['best']=[$r];}elseif($price===$bestPrice)$s['best'][]=$r;
   }
  }
  if($s['players']){
+  $table=array_values($s['players']);
+  usort($table,fn($a,$b)=>[$b['points'],$b['exact'],$a['picks'],strtolower($a['name'])]<=>[$a['points'],$a['exact'],$b['picks'],strtolower($b['name'])]);
+  $rank=0;$prev=null;foreach($table as $i=>&$t){$key=[$t['points'],$t['exact']];if($key!==$prev)$rank=$i+1;$t['rank']=$rank;$prev=$key;}unset($t);
+  $s['table']=$table;
   $max=max(array_column($s['players'],'points'));
-  $s['top']=array_values(array_filter($s['players'],fn($p)=>$p['points']===$max));
-  $qualified=array_filter($s['players'],fn($p)=>$p['picks']>=3);
+  if($max>0)$s['top']=array_values(array_filter($table,fn($p)=>$p['points']===$max));
+  $qualified=array_filter($s['players'],fn($p)=>$p['picks']>=$s['sharpMin']&&$p['points']>0);
   if($qualified){$rate=max(array_map(fn($p)=>$p['points']/$p['picks'],$qualified));$s['sharp']=array_values(array_filter($qualified,fn($p)=>abs($p['points']/$p['picks']-$rate)<1e-9));}
  }
- // Rarity = the fraction of eligible real players on that match who nailed it.
- $rarity=null;
- foreach($exacts as $fid=>$entries){$rate=count($entries)/$s['matches'][$fid]['picks'];
-  if($rarity===null||$rate<$rarity-1e-9){$rarity=$rate;$s['rare']=[['entries'=>$entries,'total'=>$s['matches'][$fid]['picks']]];}
-  elseif(abs($rate-$rarity)<1e-9)$s['rare'][]=['entries'=>$entries,'total'=>$s['matches'][$fid]['picks']];
+ if($sim['picks']){
+  $beat=array_filter($s['players'],fn($p)=>$p['simPicks']>0&&$p['simDiff']>1e-9);
+  usort($beat,fn($a,$b)=>$b['simDiff']<=>$a['simDiff']);
+  $s['sim']=['human'=>$sim['human']/$sim['picks'],'bot'=>$sim['bot']/$sim['picks'],'picks'=>$sim['picks'],'beat'=>$beat,'players'=>count(array_filter($s['players'],fn($p)=>$p['simPicks']>0))];
  }
+ // Crowd call: the single most popular result among real players (needs 2+ picks and no tie for top).
+ foreach($calls as $fid=>$c){if(array_sum($c)<2)continue;arsort($c);$top=array_keys($c);if(count($c)>1&&$c[$top[0]]===$c[$top[1]])continue;
+  $f=$s['matches'][$fid]['fixture'];$s['crowd']['called']++;$s['crowd']['right']+=(int)($top[0]===((int)$f['actual_home']<=>(int)$f['actual_away']));}
+ // Every exact score gets credit; rarest first (lowest share of real players on that match who nailed it), then longest odds.
+ foreach($exacts as $fid=>$entries){$total=$s['matches'][$fid]['picks'];$s['exacts'][]=['entries'=>$entries,'total'=>$total,'share'=>count($entries)/$total,'price'=>$entries[0]['price']??null];}
+ usort($s['exacts'],fn($a,$b)=>[$a['share'],-($a['price']??0),-$a['total']]<=>[$b['share'],-($b['price']??0),-$b['total']]);
+ if($s['exacts']){$min=$s['exacts'][0]['share'];$s['rare']=array_values(array_filter($s['exacts'],fn($e)=>abs($e['share']-$min)<1e-9));}
  $qualified=array_filter($s['matches'],fn($m)=>$m['picks']>=3);
- if($qualified){$rate=min(array_map(fn($m)=>$m['correct']/$m['picks'],$qualified));$s['hard']=array_values(array_filter($qualified,fn($m)=>abs($m['correct']/$m['picks']-$rate)<1e-9));}
+ if($qualified){$rate=min(array_map(fn($m)=>$m['correct']/$m['picks'],$qualified));$s['hard']=array_values(array_filter($qualified,fn($m)=>abs($m['correct']/$m['picks']-$rate)<1e-9));usort($s['hard'],fn($a,$b)=>$b['picks']<=>$a['picks']);}
  return $s;
 }
 function recapLinks():string{
