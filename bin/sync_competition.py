@@ -174,7 +174,7 @@ def score(c):
   for pid,ph,pa in c.execute('SELECT id,home_score,away_score FROM predictions WHERE fixture_id=?',(fid,)).fetchall():
    outcome=lambda x,y:(x>y)-(x<y)
    pts=5 if (ph==h and pa==a) else (3 if outcome(ph,pa)==outcome(h,a) else 0)
-   c.execute('UPDATE predictions SET points=? WHERE id=?',(pts,pid))
+   c.execute('UPDATE predictions SET points=? WHERE id=? AND points IS NOT ?',(pts,pid,pts))  # skip unchanged rows (avoids rewriting every row + index each run)
 def run_sync():
  c=sqlite3.connect(DB)
  c.execute("CREATE TABLE IF NOT EXISTS sync_meta(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated_at TEXT DEFAULT CURRENT_TIMESTAMP)")

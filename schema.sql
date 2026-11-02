@@ -47,7 +47,8 @@ CREATE UNIQUE INDEX users_google_sub_unique ON users(google_sub) WHERE google_su
 
 CREATE INDEX guest_signups_ip ON guest_signups(ip_hash,created_at);
 
--- Indexes for scale (added 2026-11-02; tested with 1,000 extra players / 314k predictions:
--- league page 232->16 ms, match page 106->9 ms, SIM1 page 319->46 ms, homepage 178->112 ms).
+-- Indexes for scale (2026-11-02). Fresh installs only, like the rest of this file. For an existing
+-- database run just these two statements (sqlite3 as www-data). IF NOT EXISTS skips a same-named index
+-- with different columns, so check with: SELECT sql FROM sqlite_master WHERE name='predictions_fixture';
 CREATE INDEX IF NOT EXISTS predictions_fixture ON predictions(fixture_id,user_id,home_score,away_score,points);
 CREATE INDEX IF NOT EXISTS league_members_user ON league_members(user_id,league_id);
