@@ -57,3 +57,40 @@
 #scorePickerDialog:has(#pickerScores[open]:not([hidden])) #pickerOdds .matchodds{padding:6px 0}
 #scorePickerDialog:has(#pickerScores[open]:not([hidden])) .pickerstatus{margin:6px 0 0;min-height:0;font-size:12px;text-align:center}
 #scorePickerDialog .pickerscores{margin-top:10px}
+/* £1 a bet (inc/results-odds.php): result + exact-score bets */
+.resultsodds .betsummary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0}
+.resultsodds .betcard{border:1px solid var(--line,#2a4152);border-radius:12px;padding:14px;background:var(--ink-0,#0b1822);min-width:0}
+.resultsodds .betcard.bettotal{border-color:#3d6a7a}
+.resultsodds .betcard h3{margin:0 0 6px;font-size:13px;color:var(--text-2,#9cabbc);font-weight:700}
+.resultsodds .betnet{display:block;font:700 28px/1.1 var(--display,inherit);margin-bottom:8px;white-space:nowrap}
+.resultsodds .betnone{font-size:13px;margin:6px 0 0}
+.resultsodds .betcard dl{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin:0;font-size:12px}
+.resultsodds .betcard dl div{display:flex;justify-content:space-between;gap:6px}
+.resultsodds .betcard dt{color:var(--text-2,#9cabbc)}.resultsodds .betcard dd{margin:0;color:var(--text,#eef5f8);font-weight:700}
+.resultsodds .betup{color:#35df7b}.resultsodds .betdown{color:#ff8a7a}.resultsodds .betflat{color:var(--text-2,#9cabbc)}
+.resultsodds .betbest{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.resultsodds .betbest h3{margin:0 0 4px;font-size:14px}.resultsodds .betbest p{margin:0;font-size:13px;line-height:1.5}
+.resultsodds .betmatches{margin:8px 0 12px}
+.resultsodds .betmatches summary{cursor:pointer;font-weight:700;padding:8px 0;color:var(--text,#eef5f8)}
+.resultsodds .bettablewrap{overflow-x:auto}
+.resultsodds .bettable{width:100%;border-collapse:collapse;font-size:13px}
+.resultsodds .bettable th{font-size:11px;font-weight:600;color:var(--text-2,#9cabbc);text-align:right;padding:6px 8px;border-bottom:1px solid var(--line,#2a4152);white-space:nowrap}
+.resultsodds .bettable td{text-align:right;padding:8px;border-bottom:1px solid var(--line,#22394a);vertical-align:top;white-space:nowrap}
+.resultsodds .bettable .l{text-align:left;white-space:normal}
+.resultsodds .bettable td small{display:block;font-size:11px;color:var(--text-2,#9cabbc);font-weight:400}
+.resultsodds .bettable tr.betexact td{background:rgba(53,223,123,.07)}
+.resultsodds .betpickm{display:none}
+@media(max-width:720px){
+ .resultsodds .betsummary{grid-template-columns:1fr}
+ .resultsodds .betcard{padding:12px 14px}
+ .resultsodds .betnet{font-size:24px;margin:2px 0 8px}
+ .resultsodds .betcard dl{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+ .resultsodds .betcard dl div{flex-direction:column;justify-content:flex-start;gap:1px}
+ .resultsodds .betcard dt{font-size:11px}
+ .resultsodds .betbest{grid-template-columns:1fr}
+ .resultsodds .bettable{font-size:12px}.resultsodds .bettable th,.resultsodds .bettable td{padding:7px 5px}
+ .resultsodds .bettable th:nth-child(2),.resultsodds .bettable td:nth-child(2){display:none}
+ .resultsodds .betpickm{display:inline}
+ .resultsodds .bettable .l{min-width:0}
+ .resultsodds .bettable th{white-space:normal}
+}
