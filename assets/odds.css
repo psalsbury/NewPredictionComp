@@ -9,3 +9,16 @@
 .oddskey .keyresult{color:#34d399}
 .oddskey .keypick:before{content:"";display:inline-block;width:10px;height:10px;margin-right:5px;border:1px solid #b39136;border-radius:3px;vertical-align:-1px}
 .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+/* Correct-score chances on open fixtures (inc/score-odds.php, assets/score-chance.js) */
+#predict .fixture>.scorechance{grid-area:auto!important;grid-column:1/-1!important;grid-row:auto!important}
+.scorechance{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;font-size:12px;color:var(--text-2,#9cabbc);text-align:center;line-height:1.5}
+.scorechance b{color:var(--text,#eef5f8)}
+.scorechance .cspick:empty{display:none}
+.scorechance .cspick,.pickerchance{color:var(--gold,#78d7cf)}
+.scorechance small,.pickerchance small{color:var(--text-2,#9cabbc)}
+.pickerchance{text-align:center;font-size:14px;margin:8px 0 0}
+.scoreoddstable{width:100%;max-width:520px;border-collapse:collapse;margin:8px 0}
+.scoreoddstable th,.scoreoddstable td{padding:8px;text-align:left;border-bottom:1px solid var(--line,#304655)}
+.scoreoddstable th{font-size:13px;color:var(--text-2,#9cabbc);font-weight:600}
+.scoreoddstable small{color:var(--text-2,#9cabbc)}
+.scoreoddstable tr.hit td{background:var(--gold-soft,rgba(120,215,207,.12))}

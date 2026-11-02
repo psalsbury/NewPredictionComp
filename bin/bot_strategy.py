@@ -41,9 +41,10 @@ def selection_weights(grade, values):
     return normalise([prior * math.exp(beta * (value - top)) for prior,value in zip(PRIOR,values)])
 
 class Strategy:
-    def __init__(self, matches, odds=None, now=None):
+    def __init__(self, matches, odds=None, now=None, score_odds=None):
         self.matches = sorted(matches, key=lambda m: when(m['kickoff']))
         self.odds = odds or {}
+        self.score_odds = score_odds or {}
         self.now = when(now) if now else datetime.now(timezone.utc)
         self.cache = {}
 
@@ -92,6 +93,21 @@ class Strategy:
                 masses=[sum(p for (h,a),p in zip(SCORES,probs) if result(h,a)==r) for r in [-1,0,1]]
                 desired=[blend*m+(1-blend)*p for m,p in zip(market,masses)]
                 probs=normalise([p*desired[result(h,a)+1]/masses[result(h,a)+1] for (h,a),p in zip(SCORES,probs)])
+        # Correct-score market (fixture_score_odds): when a fresh pre-match snapshot exists it
+        # replaces most of the model's score grid, so every bot level reads the bookmakers' view.
+        market=self.score_odds.get(external)
+        if market:
+            observed,fetched=when(market['observed_at']),when(market['fetched_at'])
+            if observed<=cutoff and fetched<=cutoff:
+                age=(cutoff-observed).total_seconds()/86400
+                blend=.85 if age<=3 else .6 if age<=7 else 0
+                inv={k:1/v for k,v in market['prices'].items() if v>1}
+                total=sum(inv.values())
+                if blend and total:
+                    grid=[inv.get((h,a),0)/total for h,a in SCORES]
+                    if sum(grid)>0:
+                        grid=normalise(grid)
+                        probs=normalise([blend*g+(1-blend)*p for g,p in zip(grid,probs)])
         values=utilities(probs)
         self.cache[key]=(probs,values)
         return probs,values
@@ -122,4 +138,12 @@ def from_database(db, canonical=lambda name:name, archive=(), now=None):
     except Exception as exc:
         import sqlite3
         if not isinstance(exc,sqlite3.OperationalError) or 'no such table' not in str(exc): raise
-    return Strategy(matches,odds,now)
+    score_odds={}
+    try:
+        for external,h,a,price,observed,fetched in db.execute('SELECT f.external_id,s.home_goals,s.away_goals,s.price,s.observed_at,s.fetched_at FROM fixture_score_odds s JOIN fixtures f ON f.id=s.fixture_id'):
+            m=score_odds.setdefault(external,{'prices':{},'observed_at':observed,'fetched_at':fetched})
+            m['prices'][(int(h),int(a))]=float(price)
+    except Exception as exc:
+        import sqlite3
+        if not isinstance(exc,sqlite3.OperationalError) or 'no such table' not in str(exc): raise
+    return Strategy(matches,odds,now,score_odds)

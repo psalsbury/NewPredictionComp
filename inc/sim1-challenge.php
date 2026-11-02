@@ -4,6 +4,7 @@ declare(strict_types=1);
 // The benchmark on each match is the SIM1 average, so players are only compared on matches they predicted.
 require_once __DIR__.'/listing.php';
 require_once __DIR__.'/recap.php';
+require_once __DIR__.'/score-odds.php';
 
 function sim1ChallengeData(PDO $db,array $rows):?array{
  $done=[];foreach($rows as $f)if(pcIsFinished($f)&&strtotime($f['kickoff_utc'])<=time()&&pcIsScored($db,(int)$f['id']))$done[(int)$f['id']]=$f;
@@ -80,6 +81,12 @@ function renderSim1Challenge(PDO $db,array $rows,string $label,bool $ongoing):st
  $h.='</section>';
  $lines=[];foreach($d['scorelines'] as $l=>$c)$lines[]='<strong>'.$e($l).'</strong> ('.round(100*$c/$d['simPicks']).'%)';
  $h.='<section class="panel s1card"><h2>How SIM1 plays</h2><p>Favourite scores: '.implode(', ',$lines).'.</p><p>SIM1 predicted a draw <strong>'.$d['simDrawPct'].'%</strong> of the time; <strong>'.$d['drawPct'].'%</strong> of these matches were drawn.</p><p>It called the result '.$d['simCorrectPct'].'% of the time and the exact score '.$d['simExactPct'].'%.</p><p class="note">'.($d['simDrawPct']+5<$d['drawPct']?'SIM1 rarely backs a draw — a well-timed draw is one of the best ways to beat it.':'SIM1 backs the likeliest results; the points are in the surprises it will not predict.').'</p></section>';
+ $ms=pcMarketStats($db,array_map(fn($f)=>(int)$f['id'],$rows));
+ if($ms['matches']){$pm=fn($p,$n)=>$n?number_format($p/$n,2):'–';$fv=$ms['fav'];
+  $h.='<section class="panel s1card"><h2>Humans v SIM1 v the Bookie</h2><p class="note">The Bookie always backs the bookmakers\' favourite score. Matches with correct-score prices only ('.$ms['matches'].' so far).</p><table class="s1table"><thead><tr><th class="l"></th><th>Pts/match</th><th>Favourite score came in</th></tr></thead><tbody>'
+   .'<tr><td class="l">Real players</td><td>'.$pm($ms['humans']['points'],$ms['humans']['n']).'</td><td>'.($fv['crowdN']?$fv['crowd'].' of '.$fv['crowdN']:'–').'</td></tr>'
+   .'<tr><td class="l">SIM1</td><td>'.$pm($ms['sim']['points'],$ms['sim']['n']).'</td><td>'.($fv['simN']?$fv['sim'].' of '.$fv['simN']:'–').'</td></tr>'
+   .'<tr><td class="l">The Bookie</td><td>'.$pm($ms['bookie']['points'],$ms['matches']).'</td><td>'.$fv['bookie'].' of '.$ms['matches'].'</td></tr></tbody></table><p class="note">“Favourite score” is the most popular pick of each side (real players need two or more picks and a clear favourite).</p></section>';}
  $h.='<section class="panel s1card"><h2>The SIM1 squad</h2><p class="note">Five expert bots, each with slightly different picks.</p><ol class="s1squad">';
  foreach($d['squad'] as $s)$h.='<li><span>'.$e($s['name']).'</span><b>'.$s['points'].'</b><small>'.$s['exact'].' exact · '.$s['correct'].' results</small></li>';
  $h.='</ol></section></div>';

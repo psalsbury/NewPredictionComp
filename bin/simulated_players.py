@@ -40,7 +40,7 @@ def refresh(db, archive_fetch=True, gameweek_refresh=True):
         for grade in totals:
             totals[grade].append(sum(p*v for p,v in zip(selection_weights(grade,values),values)))
     summary={'model':VERSION,'at':model.now.isoformat(),'bots':len(bots),'archive_matches':len(archive),
-        'future_predictions_changed':written,'gameweeks':len(weeks),'stored_odds':len(model.odds),
+        'future_predictions_changed':written,'gameweeks':len(weeks),'stored_odds':len(model.odds),'stored_score_odds':len(model.score_odds),
         'expected_points_by_level':{g:round(sum(v)/len(v),4) for g,v in totals.items() if v}}
     db.execute('CREATE TABLE IF NOT EXISTS sync_meta(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated_at TEXT DEFAULT CURRENT_TIMESTAMP)')
     db.execute("INSERT INTO sync_meta(key,value) VALUES('last_bot_strategy_job',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP",(json.dumps(summary),))

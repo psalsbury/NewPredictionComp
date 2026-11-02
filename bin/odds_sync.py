@@ -54,8 +54,9 @@ def sync_odds(c,force=False):
  print('odds_updated',updated,'unmatched',unmatched,'credits_remaining',remaining)
  return summary
 CS_BOOK_ORDER={'paddypower':0,'williamhill':1,'ladbrokes':2,'betfair_ex_uk':3}
-def sync_score_odds(c,window_hours=8,retry_minutes=60,max_events=12,min_credits=60):
- """One correct-score snapshot per fixture, taken in the last few hours before kick-off (1 credit each)."""
+def sync_score_odds(c,window_hours=120,refresh_hours=3,retry_minutes=60,max_events=12,min_credits=60):
+ """Correct-score prices: a first snapshot up to 5 days ahead (shown to players while they predict),
+ then one refresh in the last 3 hours before kick-off (the price used for awards). 1 credit each, ~2 per match."""
  c.execute("""CREATE TABLE IF NOT EXISTS fixture_score_odds(fixture_id INTEGER NOT NULL REFERENCES fixtures(id),home_goals INTEGER NOT NULL,away_goals INTEGER NOT NULL,price REAL NOT NULL,bookmaker TEXT NOT NULL,observed_at TEXT NOT NULL,fetched_at TEXT NOT NULL,PRIMARY KEY(fixture_id,home_goals,away_goals))""")
  c.execute("CREATE TABLE IF NOT EXISTS sync_meta(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated_at TEXT DEFAULT CURRENT_TIMESTAMP)")
  now=datetime.now(timezone.utc)
@@ -64,9 +65,10 @@ def sync_score_odds(c,window_hours=8,retry_minutes=60,max_events=12,min_credits=
  due=c.execute("""SELECT f.id,f.kickoff_utc,o.event_id FROM fixtures f JOIN fixture_odds o ON o.fixture_id=f.id
   WHERE f.status NOT IN ('FT','AET','PEN','CANC','ABD','PST','SIM')
   AND julianday(f.kickoff_utc)>julianday('now','+20 minutes') AND julianday(f.kickoff_utc)<=julianday('now',?)
-  AND NOT EXISTS(SELECT 1 FROM fixture_score_odds s WHERE s.fixture_id=f.id)
+  AND (NOT EXISTS(SELECT 1 FROM fixture_score_odds s WHERE s.fixture_id=f.id)
+   OR (julianday(f.kickoff_utc)<=julianday('now',?) AND NOT EXISTS(SELECT 1 FROM fixture_score_odds s WHERE s.fixture_id=f.id AND julianday(s.fetched_at)>=julianday(f.kickoff_utc,?))))
   AND NOT EXISTS(SELECT 1 FROM sync_meta m WHERE m.key='cs_attempt:'||f.id AND julianday(m.value)>julianday('now',?))
-  ORDER BY julianday(f.kickoff_utc) LIMIT ?""",(f'+{window_hours} hours',f'-{retry_minutes} minutes',max_events)).fetchall()
+  ORDER BY julianday(f.kickoff_utc) LIMIT ?""",(f'+{window_hours} hours',f'+{refresh_hours} hours',f'-{refresh_hours} hours',f'-{retry_minutes} minutes',max_events)).fetchall()
  if not due:return
  key=Path('/etc/predictioncomp/odds-api.key').read_text().strip()
  saved=0
@@ -94,7 +96,8 @@ def sync_score_odds(c,window_hours=8,retry_minutes=60,max_events=12,min_credits=
     except (KeyError,ValueError):continue
     if math.isfinite(price) and price>1:rows.append((fid,h,a,price,book['title'],observed,now.isoformat()))
    if len(rows)<10:continue
-   c.executemany("INSERT OR REPLACE INTO fixture_score_odds VALUES(?,?,?,?,?,?,?)",rows);saved+=1;break
+   c.execute('DELETE FROM fixture_score_odds WHERE fixture_id=?',(fid,))
+   c.executemany("INSERT INTO fixture_score_odds VALUES(?,?,?,?,?,?,?)",rows);saved+=1;break
   c.commit()
  print('score_odds_saved',saved,'of',len(due))
 if __name__=='__main__':
