@@ -46,3 +46,8 @@ CREATE UNIQUE INDEX users_email_unique ON users(email) WHERE email IS NOT NULL;
 CREATE UNIQUE INDEX users_google_sub_unique ON users(google_sub) WHERE google_sub IS NOT NULL;
 
 CREATE INDEX guest_signups_ip ON guest_signups(ip_hash,created_at);
+
+-- Indexes for scale (added 2026-11-02; tested with 1,000 extra players / 314k predictions:
+-- league page 232->16 ms, match page 106->9 ms, SIM1 page 319->46 ms, homepage 178->112 ms).
+CREATE INDEX IF NOT EXISTS predictions_fixture ON predictions(fixture_id,user_id,home_score,away_score,points);
+CREATE INDEX IF NOT EXISTS league_members_user ON league_members(user_id,league_id);
