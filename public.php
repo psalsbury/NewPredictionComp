@@ -195,9 +195,8 @@ body>main a.matchrow:hover,body>main a.matchrow:focus-visible{background:var(--i
 <section class="panel beatsim1"><h2>Can you beat SIM1?</h2><p>Take on our strongest computer players and see who is beating the best SIM1 bot.</p><a class="cta" href="/can-you-beat-sim1">Explore the SIM1 challenge →</a></section>
 <?php elseif($kind==='sim1'):?>
 <?=renderSim1Periods($simPeriods)?>
-<?php if(beatSim1Data($db,$simWeek)):?>
-<?php beatSim1Block($db,$simWeek,'Players vs the best SIM1 bot',$simWeekLabel);?>
-<?php else:?><section class="panel beatsim1"><h2>Players vs the best SIM1 bot</h2><p>No comparison is available for this period yet. It will appear once matches have finished and SIM1 points have been recorded.</p></section><?php endif;?>
+<?php require_once __DIR__.'/inc/sim1-challenge.php';$simOngoing=(bool)array_filter($simWeek,fn($f)=>!pcIsFinished($f)&&!pcIsCalledOff($f));echo renderSim1Challenge($db,$simWeek,$simWeekLabel,$simOngoing);?>
+<p class="note">SIM1 is our expert grade of bot: it uses recent and prior-season results, home and away attack and defence, and pre-match odds, then picks the scores with the highest expected points. <a href="/how-it-works">How the bots work</a> · <a href="/recap">Real-player recaps</a></p>
 <?php elseif($kind==='league'):?><?php
  $done=fn($f)=>in_array($f['status'],['FT','AET','PEN'],true)&&$f['home_score']!==null&&$f['away_score']!==null;
  $started=array_values(array_filter($leagueWeek,fn($f)=>strtotime($f['kickoff_utc'])<=time()));
