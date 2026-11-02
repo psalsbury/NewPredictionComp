@@ -14,8 +14,8 @@ DB='/var/lib/predictioncomp/predictioncomp.sqlite'
 TO='pete@salsbury.co.uk'
 FROM='PredictionComp <admin@predictioncomp.com>'
 UK=ZoneInfo('Europe/London')
-# Same rule as pc_listed_sql() in index.php: guests join the global table after two matchweeks (Fri-Thu) or an email.
-LISTED="(u.guest_since IS NULL OR u.email IS NOT NULL OR (SELECT COUNT(DISTINCT CAST((julianday(gf.kickoff_utc)-2451550.5)/7 AS INTEGER)) FROM predictions gp JOIN fixtures gf ON gf.id=gp.fixture_id WHERE gp.user_id=u.id)>=2)"
+# Same as pc_listed_sql() (inc/listing.php): users.listed_at is set by triggers once a guest has two matchweeks (Fri-Thu) or an email.
+LISTED="(u.listed_at IS NOT NULL)"
 
 def utc(d):return d.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 

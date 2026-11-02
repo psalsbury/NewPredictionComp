@@ -6,6 +6,7 @@ import os
 import sqlite3
 from bot_strategy import from_database,result,when
 from bot_history import load_archive
+from scoring import points as score_points
 from club_catalog import load_catalog,canonical,season_year
 
 def evaluate(db):
@@ -27,7 +28,7 @@ def evaluate(db):
         for grade in totals:
             for identity in range(5):
                 home,away=model.predict(grade,1000+grade*10+identity,external,fixture['home'],fixture['away'],fixture['kickoff'])
-                points=5 if (home,away)==(fixture['hg'],fixture['ag']) else 3 if result(home,away)==result(fixture['hg'],fixture['ag']) else 0
+                points=score_points(home,away,fixture['hg'],fixture['ag'])
                 totals[grade][0]+=points;totals[grade][1]+=1
     return {'fixtures':len(model.matches),'points_per_pick':{g:round(points/n,4) for g,(points,n) in totals.items() if n},
             'method':'walk-forward at kickoff: own, live and future results excluded; stored fixture IDs link cached odds, with observed/fetched timestamps checked by the strategy; archive-only fixtures use form; synthetic players, without gameweek uniqueness adjustments'}

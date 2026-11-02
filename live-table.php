@@ -12,7 +12,7 @@ header('X-Robots-Tag: noindex');
 $db = new PDO('sqlite:' . pc_db_path(), null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 $db->exec('PRAGMA busy_timeout=3000');
 $uid = 0;
-if (!empty($_COOKIE['pc_token'])) { $q = $db->prepare('SELECT id FROM users WHERE token=?'); $q->execute([(string)$_COOKIE['pc_token']]); $uid = (int)$q->fetchColumn(); }
+$viewer = pc_user_from_cookie($db); if ($viewer) $uid = (int)$viewer['id'];
 $league = (int)($_GET['league'] ?? 0);
 if ($league) { // friend leagues: members only
     $q = $db->prepare('SELECT 1 FROM league_members WHERE league_id=? AND user_id=?'); $q->execute([$league, $uid]);

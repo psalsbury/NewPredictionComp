@@ -1,6 +1,6 @@
 <?php
 function predictionPoints(int $h,int $a,int $actualH,int $actualA):int{
- return $h===$actualH&&$a===$actualA?5:(($h<=>$a)===($actualH<=>$actualA)?3:0);
+ return pc_points($h,$a,$actualH,$actualA);
 }
 function personalPerformance(PDO $db,int $uid,int $year):array{
  $start=$year.'-07-01T00:00:00Z';$end=($year+1).'-07-01T00:00:00Z';

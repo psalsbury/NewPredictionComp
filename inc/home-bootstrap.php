@@ -33,20 +33,25 @@ function pc_front_result(array $f,?array $pick,?array $live=null):string{
  return $html.'<small class="frontoutcome">'.$label.$points.'</small></div>';
 }
 function token(){return bin2hex(random_bytes(16));} function code(){return strtoupper(substr(bin2hex(random_bytes(5)),0,8));}
-if(empty($_COOKIE['pc_token'])){$t=token();setcookie('pc_token',$t,['expires'=>time()+31536000*3,'path'=>'/','secure'=>true,'httponly'=>true,'samesite'=>'Lax']);$_COOKIE['pc_token']=$t;}
-$t=$_COOKIE['pc_token'];$q=$db->prepare('SELECT * FROM users WHERE token=?');$q->execute([$t]);$user=$q->fetch(PDO::FETCH_ASSOC);
+// Signed-in player from their device login (inc/session.php); old-style cookies are upgraded here.
+$user=pc_user_from_cookie($db,true);
 if(!$user){
+ // Visitors get a random browser token; it becomes the player's users.token if they start as a guest.
+ $t=(string)($_COOKIE['pc_token']??'');if(!preg_match('/^[a-f0-9]{32}$/',$t)){$t=token();pc_set_cookie($t,time()+31536000*3);}
  $user=['id'=>0,'token'=>$t,'display_name'=>'Guest','email'=>null,'google_sub'=>null,'supported_club'=>null];
 }
+$t=(string)$_COOKIE['pc_token'];
 $uid=(int)$user['id'];
 require_once PC_ROOT.'/standings.php';
 require_once PC_ROOT.'/password-auth.php';
 $premierLeagueClubs=pcSeasonClubs($db);
 if(!empty($user['supported_club']))$user['supported_club']=pcClubName($user['supported_club'],$db);
-if(empty($_SESSION['registration_csrf']))$_SESSION['registration_csrf']=bin2hex(random_bytes(32));
+$_SESSION['registration_csrf']=pc_csrf_token(); // stable per browser; see inc/session.php
 
+// Sign this device in to the account whose users.token is $token (a new per-device login).
 function pc_cookie(string $token): void {
- setcookie('pc_token',$token,['expires'=>time()+31536000*3,'path'=>'/','secure'=>true,'httponly'=>true,'samesite'=>'Lax']);
+ global $db;$s=$db->prepare('SELECT id FROM users WHERE token=?');$s->execute([$token]);$id=(int)$s->fetchColumn();
+ if($id>0)pc_start_session($db,$id);
 }
 function pc_google_config(): ?array {
  $p='/etc/predictioncomp/google-oauth.json';
@@ -88,10 +93,11 @@ function pc_merge_account(PDO $db,int $currentId,string $email,?string $googleSu
     $db->prepare('UPDATE leagues SET owner_user_id=? WHERE owner_user_id=?')->execute([$tid,$currentId]);
     $db->prepare('DELETE FROM predictions WHERE user_id=?')->execute([$currentId]);
     $db->prepare('DELETE FROM league_members WHERE user_id=?')->execute([$currentId]);
+    $db->prepare('DELETE FROM user_sessions WHERE user_id=?')->execute([$currentId]);
     $db->prepare('DELETE FROM users WHERE id=?')->execute([$currentId]);
    }
    if(empty($target['email_verified_at'])&&!empty($target['password_hash']))
-    $db->prepare('UPDATE users SET password_hash=NULL,token=? WHERE id=?')->execute([token(),$tid]);
+   {$db->prepare('UPDATE users SET password_hash=NULL,token=? WHERE id=?')->execute([token(),$tid]);$db->prepare('DELETE FROM user_sessions WHERE user_id=?')->execute([$tid]);}
   } else {$tid=$currentId;$target=$cur;}
   $display=$name&&preg_match('/^Player [A-F0-9]{4}$/',(string)($target['display_name']??''))?pc_cut24($name):null;
   $sql='UPDATE users SET email=?,email_verified_at=CURRENT_TIMESTAMP';

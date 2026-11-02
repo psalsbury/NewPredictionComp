@@ -9,6 +9,7 @@ DB='/var/lib/predictioncomp/predictioncomp.sqlite'
 KEY=os.environ.get('API_FOOTBALL_KEY','')
 FINAL={'FT','AET','PEN'}
 TERMINAL=FINAL|{'PST','CANC','ABD','AWD','WO'}
+from scoring import points as score_points
 from club_catalog import load_catalog, canonical as catalog_name, register_team, season_year
 _catalog=load_catalog()
 def canonical(name): return catalog_name(name,_catalog)
@@ -172,8 +173,7 @@ def scoreboard_results(c):
 def score(c):
  for fid,h,a in c.execute("SELECT id,home_score,away_score FROM fixtures WHERE status IN ('FT','AET','PEN') AND home_score IS NOT NULL AND away_score IS NOT NULL").fetchall():
   for pid,ph,pa in c.execute('SELECT id,home_score,away_score FROM predictions WHERE fixture_id=?',(fid,)).fetchall():
-   outcome=lambda x,y:(x>y)-(x<y)
-   pts=5 if (ph==h and pa==a) else (3 if outcome(ph,pa)==outcome(h,a) else 0)
+   pts=score_points(ph,pa,h,a)
    c.execute('UPDATE predictions SET points=? WHERE id=? AND points IS NOT ?',(pts,pid,pts))  # skip unchanged rows (avoids rewriting every row + index each run)
 def run_sync():
  c=sqlite3.connect(DB)

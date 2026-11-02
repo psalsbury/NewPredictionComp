@@ -57,6 +57,7 @@ function pc_password_api(PDO $db,array $user,int $uid,string $action,array $in):
    if($existing&&(int)$existing['id']!==$uid)pc_auth_error(409,'That email already has an account. Sign in to it instead.');
    if(!empty($user['password_hash'])&&(int)($_SESSION['password_reset_user_id']??0)!==$uid&&!password_verify((string)($in['current_password']??''),$user['password_hash']))pc_auth_error(401,'Enter your current password.');
    $db->prepare('UPDATE users SET email=?,password_hash=? WHERE id=?')->execute([$email,password_hash($password,PASSWORD_DEFAULT),$uid]);
+   pc_end_other_sessions($db,$uid); // a new password signs out every other device
    unset($_SESSION['password_reset_user_id']);session_regenerate_id(true);
   }else{
    if($uid>0)pc_auth_error(400,'Use Account to add email/password to your existing profile.');

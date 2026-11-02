@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/listing.php';
 function recapPoints(array $r):int{
- return (int)$r['home_score']===(int)$r['actual_home']&&(int)$r['away_score']===(int)$r['actual_away']?5:(((int)$r['home_score']<=>(int)$r['away_score'])===((int)$r['actual_home']<=>(int)$r['actual_away'])?3:0);
+ return pc_points((int)$r['home_score'],(int)$r['away_score'],(int)$r['actual_home'],(int)$r['actual_away']);
 }
 function recapPrice(array $r):?float{
  $k=strtotime($r['kickoff_utc']);$o=!empty($r['observed_at'])?strtotime($r['observed_at']):false;$f=!empty($r['fetched_at'])?strtotime($r['fetched_at']):false;

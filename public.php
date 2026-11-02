@@ -56,8 +56,8 @@ if($kind==='league'){
  require __DIR__.'/league-progress.php';
  $leagueStart=new DateTimeImmutable(pcSeasonYear().'-08-01 00:00:00',new DateTimeZone('Europe/London'));
  $leagueTable=friendLeagueProgress($db,(int)$league['id'],0,$leagueStart,$leagueStart->modify('+10 months'));
- $viewerToken=(string)($_COOKIE['pc_token']??'');$isMember=false;
- if($viewerToken!==''){$q=$db->prepare('SELECT 1 FROM league_members lm JOIN users u ON u.id=lm.user_id WHERE lm.league_id=? AND u.token=?');$q->execute([(int)$league['id'],$viewerToken]);$isMember=(bool)$q->fetchColumn();}
+ $viewer=pc_user_from_cookie($db);$isMember=false;
+ if($viewer){$q=$db->prepare('SELECT 1 FROM league_members WHERE league_id=? AND user_id=?');$q->execute([(int)$league['id'],(int)$viewer['id']]);$isMember=(bool)$q->fetchColumn();}
  $leagueWeek=pcWeekFixtures($db,weekKey(gmdate('c')));
  $leaguePicks=[];
  if($leagueWeek){

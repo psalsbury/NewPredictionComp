@@ -5,9 +5,8 @@ declare(strict_types=1);
 // from the confirmed full-time result.
 
 /** Points a pick would earn with this score (same rule as the sync: 5 exact, 3 result, 0). */
-function pcPickPoints(int $ph, int $pa, int $h, int $a): int {
-    if ($ph === $h && $pa === $a) return 5;
-    return (($ph <=> $pa) === ($h <=> $a)) ? 3 : 0;
+function pcPickPoints(int $ph, int $pa, int $h, int $a, bool $joker = false): int {
+    return pc_points($ph, $pa, $h, $a, $joker);
 }
 
 /**

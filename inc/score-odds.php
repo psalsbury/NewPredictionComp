@@ -67,7 +67,7 @@ function pcMarketStats(PDO $db,array $ids):array{
  $in=implode(',',array_keys($models));
  $fx=[];foreach($db->query("SELECT id,home,away,home_score,away_score,kickoff_utc FROM fixtures WHERE id IN ($in) AND status IN ('FT','AET','PEN') AND home_score IS NOT NULL AND away_score IS NOT NULL AND julianday(kickoff_utc)<=julianday('now')") as $f)$fx[(int)$f['id']]=$f;
  if(!$fx)return $st;$in=implode(',',array_keys($fx));
- $pts=fn(int $h,int $a,int $x,int $y)=>$h===$x&&$a===$y?5:(($h<=>$a)===($x<=>$y)?3:0);
+ $pts=fn(int $h,int $a,int $x,int $y)=>pc_points($h,$a,$x,$y);
  $simPicks=[];foreach($db->query("SELECT p.fixture_id,p.home_score,p.away_score FROM predictions p JOIN users u ON u.id=p.user_id WHERE p.fixture_id IN ($in) AND u.is_bot=1 AND u.bot_grade=1") as $r)$simPicks[(int)$r['fixture_id']][]=[(int)$r['home_score'],(int)$r['away_score']];
  $hum=$db->query("SELECT u.id,u.display_name,p.fixture_id,p.home_score,p.away_score FROM predictions p JOIN users u ON u.id=p.user_id WHERE p.fixture_id IN ($in) AND COALESCE(u.is_bot,0)=0 AND ".pc_listed_sql())->fetchAll(PDO::FETCH_ASSOC);
  $crowd=[];

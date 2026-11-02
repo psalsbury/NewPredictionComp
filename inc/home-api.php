@@ -12,6 +12,7 @@ if(isset($_GET['api'])){
 
  if($_GET['api']==='register_name'){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'Register with email and password or Google.']);exit;}
  if($_GET['api']==='google_login'){
+  if(!pc_csrf_ok($in))pc_auth_error(403,'Please refresh the page and try again.');
   $cfg=pc_google_config();$credential=(string)($in['credential']??'');
   if(!$cfg||$credential===''){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'Google sign-in is unavailable']);exit;}
   $json=@file_get_contents('https://oauth2.googleapis.com/tokeninfo?id_token='.rawurlencode($credential));$info=is_string($json)?json_decode($json,true):null;
@@ -49,6 +50,12 @@ if(isset($_GET['api'])){
   }
   $person=$db->prepare("SELECT u.display_name,COALESCE(u.is_bot,0) is_bot,COALESCE(u.bot_grade,5) bot_grade,b.title,b.bio FROM users u LEFT JOIN bot_profiles b ON b.user_id=u.id WHERE u.id=?");$person->execute([$playerId]);$personInfo=$person->fetch(PDO::FETCH_ASSOC);
   if(!$personInfo){http_response_code(404);echo json_encode(['ok'=>false,'error'=>'Player not found']);exit;}
+  // Guests not yet on the global table are told only they can see their row: show their picks only to
+  // themselves and to people who share a friends league with them.
+  if((int)$personInfo['is_bot']!==1&&$playerId!==$uid){
+   $vis=$db->prepare('SELECT 1 FROM users u WHERE u.id=? AND ('.pc_listed_sql().' OR EXISTS(SELECT 1 FROM league_members a JOIN league_members b ON b.league_id=a.league_id WHERE a.user_id=u.id AND b.user_id=?))');
+   $vis->execute([$playerId,$uid]);if(!$vis->fetchColumn()){http_response_code(404);echo json_encode(['ok'=>false,'error'=>'Player not found']);exit;}
+  }
   $name=(string)$personInfo['display_name'];
   $botInfo=null;
   if((int)$personInfo['is_bot']===1){$botInfo=['id'=>$playerId,'grade'=>max(1,min(5,(int)$personInfo['bot_grade'])),'title'=>(string)($personInfo['title']??''),'bio'=>(string)($personInfo['bio']??''),'avatar'=>'/bot-avatar.php?id='.$playerId];}
@@ -60,6 +67,7 @@ if(isset($_GET['api'])){
   echo json_encode(['ok'=>true,'name'=>$name,'period_title'=>$title,'results'=>$results->fetchAll(PDO::FETCH_ASSOC),'bot'=>$botInfo]);exit;
  }
  if($_GET['api']==='save'){
+  if(!pc_csrf_ok($in))pc_auth_error(403,'Please refresh the page and try again.');
   if($uid<1){http_response_code(401);echo json_encode(['ok'=>false,'need_name'=>true,'error'=>'Choose a display name to save your predictions']);exit;}
   $id=(int)($in['fixture_id']??0);$h=max(0,min(15,(int)($in['home']??0)));$a=max(0,min(15,(int)($in['away']??0)));
   $f=$db->prepare("SELECT kickoff_utc FROM fixtures WHERE id=?");$f->execute([$id]);$kick=$f->fetchColumn();
@@ -69,7 +77,7 @@ if(isset($_GET['api'])){
   $db->prepare('UPDATE users SET first_played_at=CURRENT_TIMESTAMP WHERE id=? AND first_played_at IS NULL')->execute([$uid]);
   echo json_encode(['ok'=>true]);exit;
  }
- if($_GET['api']==='profile'){if($uid<1){http_response_code(401);echo json_encode(['ok'=>false,'error'=>'Sign in to update your account']);exit;}$reminders=array_key_exists('reminders',$in)?(!empty($in['reminders'])?1:0):(int)($user['prediction_reminders']??0);$lead=(int)($in['reminder_lead_hours']??$user['reminder_lead_hours']??24);if(!in_array($lead,[2,24],true)){$lead=24;}$verifySent=false;if($reminders&&pc_reminder_state($user)!=='ready'){if(pc_reminder_state($user)!=='unverified'){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'Add an email to your account to get reminders.']);exit;}$reminders=0;$verifySent=pc_send_reminder_verification($db,$user);}$n=trim((string)($in['name']??''));$club=trim((string)($in['club']??''));$clubs=$premierLeagueClubs;if(strlen($n)<2||strlen($n)>24||($club!==''&&!in_array($club,$clubs,true))){http_response_code(400);echo json_encode(['ok'=>false]);exit;}if($n!==(string)$user['display_name']&&($nameError=pc_display_name_error($db,$n,$uid))){http_response_code($nameError[0]);echo json_encode(['ok'=>false,'error'=>$nameError[1]]);exit;}$s=$db->prepare('UPDATE users SET display_name=?,supported_club=?,prediction_reminders=?,reminder_lead_hours=? WHERE id=?');$s->execute([$n,$club,$reminders,$lead,$uid]);echo json_encode(['ok'=>true,'verify_sent'=>$verifySent]);exit;}
+ if($_GET['api']==='profile'){if(!pc_csrf_ok($in))pc_auth_error(403,'Please refresh the page and try again.');if($uid<1){http_response_code(401);echo json_encode(['ok'=>false,'error'=>'Sign in to update your account']);exit;}$reminders=array_key_exists('reminders',$in)?(!empty($in['reminders'])?1:0):(int)($user['prediction_reminders']??0);$lead=(int)($in['reminder_lead_hours']??$user['reminder_lead_hours']??24);if(!in_array($lead,[2,24],true)){$lead=24;}$verifySent=false;if($reminders&&pc_reminder_state($user)!=='ready'){if(pc_reminder_state($user)!=='unverified'){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'Add an email to your account to get reminders.']);exit;}$reminders=0;$verifySent=pc_send_reminder_verification($db,$user);}$n=trim((string)($in['name']??''));$club=trim((string)($in['club']??''));$clubs=$premierLeagueClubs;if(strlen($n)<2||strlen($n)>24||($club!==''&&!in_array($club,$clubs,true))){http_response_code(400);echo json_encode(['ok'=>false]);exit;}if($n!==(string)$user['display_name']&&($nameError=pc_display_name_error($db,$n,$uid))){http_response_code($nameError[0]);echo json_encode(['ok'=>false,'error'=>$nameError[1]]);exit;}$s=$db->prepare('UPDATE users SET display_name=?,supported_club=?,prediction_reminders=?,reminder_lead_hours=? WHERE id=?');$s->execute([$n,$club,$reminders,$lead,$uid]);echo json_encode(['ok'=>true,'verify_sent'=>$verifySent]);exit;}
  if($_GET['api']==='reminders'){
   if($_SERVER['REQUEST_METHOD']!=='POST'||!hash_equals((string)$_SESSION['registration_csrf'],(string)($in['csrf']??'')))pc_auth_error(403,'Please refresh and try again.');
   if($uid<1){http_response_code(401);echo json_encode(['ok'=>false,'need_email'=>true,'error'=>'Save your account with an email to get reminders.']);exit;}
@@ -91,6 +99,7 @@ if(isset($_GET['api'])){
   echo json_encode(['ok'=>true,'league'=>['id'=>(int)$leagueInfo['id'],'name'=>$leagueInfo['name'],'code'=>$leagueInfo['code'],'can_manage'=>(int)$leagueInfo['owner_user_id']===$uid],'period_title'=>$title,'members'=>$progress['members'],'progress'=>$progress]);exit;
  }
  if($_GET['api']==='add_league_bot'){
+  if(!pc_csrf_ok($in))pc_auth_error(403,'Please refresh the page and try again.');
   if(empty($user['email'])){http_response_code(401);echo json_encode(['ok'=>false,'error'=>'Please sign in to manage a friends league']);exit;}
   $leagueId=(int)($in['league_id']??0);$grade=(int)($in['grade']??0);
   if($grade<1||$grade>5){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'Choose a SIM grade from 1 to 5']);exit;}
@@ -106,6 +115,7 @@ if(isset($_GET['api'])){
   echo json_encode(['ok'=>true,'bot'=>['id'=>(int)$bot['id'],'display_name'=>$bot['display_name'],'bot_grade'=>$grade]]);exit;
  }
  if($_GET['api']==='remove_league_member'){
+  if(!pc_csrf_ok($in))pc_auth_error(403,'Please refresh the page and try again.');
   if(empty($user['email'])){http_response_code(401);echo json_encode(['ok'=>false,'error'=>'Please sign in to manage a friends league']);exit;}
   $leagueId=(int)($in['league_id']??0);$memberId=(int)($in['user_id']??0);
   $owner=$db->prepare('SELECT owner_user_id FROM leagues WHERE id=?');$owner->execute([$leagueId]);$ownerId=(int)$owner->fetchColumn();

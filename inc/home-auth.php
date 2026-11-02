@@ -15,7 +15,8 @@ if($pendingInviteName&&$uid>0&&!isset($_GET['api'])){
 }
 if(isset($_GET['verify_email']))pc_verify_email_route($db);
 if(($_GET['auth']??'')==='logout'){
- setcookie('pc_token','',['expires'=>time()-3600,'path'=>'/','secure'=>true,'httponly'=>true,'samesite'=>'Lax']);
+ // POST with the CSRF token only, so other sites can't sign players out.
+ if(pc_csrf_ok($_POST))pc_end_session($db,$uid);
  header('Location: /');exit;
 }
 if(isset($_GET['login_token'])){

@@ -52,3 +52,6 @@ CREATE INDEX guest_signups_ip ON guest_signups(ip_hash,created_at);
 -- with different columns, so check with: SELECT sql FROM sqlite_master WHERE name='predictions_fixture';
 CREATE INDEX IF NOT EXISTS predictions_fixture ON predictions(fixture_id,user_id,home_score,away_score,points);
 CREATE INDEX IF NOT EXISTS league_members_user ON league_members(user_id,league_id);
+
+-- Stage 1 (2026-11-02): per-device logins, stored listed flag + triggers. See bin/migrations/2026-11-02-stage1.sql
+-- (that file is the source of truth; apply it to existing databases).
