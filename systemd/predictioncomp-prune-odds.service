@@ -1,0 +1,10 @@
+[Unit]
+Description=PredictionComp: delete settled correct-score prices nobody needs (keeps the DB small)
+After=network-online.target
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+ExecStart=/usr/bin/python3 /opt/predictioncomp/bin/prune_odds.py
+TimeoutStartSec=300
+UMask=0007

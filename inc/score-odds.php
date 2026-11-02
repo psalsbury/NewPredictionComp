@@ -15,6 +15,9 @@ function pcScoreModels(PDO $db,array $ids,bool $preKickoffOnly=true):array{
     if($preKickoffOnly&&strtotime($r['observed_at'])>=strtotime($r['kickoff_utc']))continue;
     $fid=(int)$r['fixture_id'];$raw[$fid]['prices'][(int)$r['home_goals'].'-'.(int)$r['away_goals']]=(float)$r['price'];$raw[$fid]['bookmaker']=$r['bookmaker'];$raw[$fid]['observed_at']=$r['observed_at'];
    }
+   // Finished matches pruned by bin/prune_odds.py keep only the needed rows plus a summary of the full market.
+   if($raw&&(bool)$db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='fixture_score_summary'")->fetchColumn())
+    foreach($db->query('SELECT * FROM fixture_score_summary WHERE fixture_id IN ('.implode(',',array_keys($raw)).')') as $r)$raw[(int)$r['fixture_id']]['summary']=$r;
    foreach($raw as $fid=>$m)$cache[$fid]=pcScoreModelBuild($m);
   }
  }
@@ -23,13 +26,16 @@ function pcScoreModels(PDO $db,array $ids,bool $preKickoffOnly=true):array{
 function pcScoreModel(PDO $db,int $id):?array{return pcScoreModels($db,[$id])[$id]??null;}
 
 function pcScoreModelBuild(array $m):array{
+ $sm=$m['summary']??null;
  $inv=[];foreach($m['prices'] as $k=>$p)if($p>1)$inv[$k]=1/$p;
- $sum=array_sum($inv);$probs=[];foreach($inv as $k=>$v)$probs[$k]=$v/$sum;
+ $sum=$sm?(float)$sm['inv_total']:array_sum($inv);$probs=[];foreach($inv as $k=>$v)$probs[$k]=$v/$sum;
  arsort($probs);
- $res=[1=>0.0,0=>0.0,-1=>0.0];foreach($probs as $k=>$p){[$h,$a]=array_map('intval',explode('-',$k));$res[$h<=>$a]+=$p;}
+ if($sm)$res=[1=>(float)$sm['p_home'],0=>(float)$sm['p_draw'],-1=>(float)$sm['p_away']];
+ else{$res=[1=>0.0,0=>0.0,-1=>0.0];foreach($probs as $k=>$p){[$h,$a]=array_map('intval',explode('-',$k));$res[$h<=>$a]+=$p;}}
+ if($sm)$ranks=json_decode((string)$sm['ranks'],true)?:[];else{$ranks=[];$i=0;foreach($probs as $k=>$p)$ranks[$k]=++$i;}
  $ev=[];foreach($probs as $k=>$p){[$h,$a]=array_map('intval',explode('-',$k));$ev[$k]=3*$res[$h<=>$a]+2*$p;}
  arsort($ev);
- return ['probs'=>$probs,'prices'=>$m['prices'],'results'=>$res,'ev'=>$ev,'fav'=>array_key_first($probs),'best'=>array_key_first($ev),'bookmaker'=>$m['bookmaker'],'observed_at'=>$m['observed_at']];
+ return ['probs'=>$probs,'prices'=>$m['prices'],'results'=>$res,'ev'=>$ev,'fav'=>array_key_first($probs),'best'=>array_key_first($ev),'bookmaker'=>$m['bookmaker'],'observed_at'=>$m['observed_at'],'ranks'=>$ranks,'scorelines'=>$sm?(int)$sm['scorelines']:count($probs)];
 }
 function pcScoreProb(array $model,int $h,int $a):float{return $model['probs'][$h.'-'.$a]??0.0;}
 function pcScoreEv(array $model,int $h,int $a):float{return 3*$model['results'][$h<=>$a]+2*pcScoreProb($model,$h,$a);}
@@ -92,7 +98,7 @@ function pcScoreOddsPanel(PDO $db,array $match):string{
  $e=fn($v)=>htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');
  $done=in_array($match['status'],['FT','AET','PEN'],true)&&$match['home_score']!==null&&$match['away_score']!==null;
  $h='<section class="panel scoreoddspanel"><h2>'.($done?'How likely was that score?':'Most likely scores').'</h2>';
- if($done){$x=(int)$match['home_score'];$y=(int)$match['away_score'];$p=pcScoreProb($m,$x,$y);$rank=array_search($x.'-'.$y,array_keys($m['probs']),true);
+ if($done){$x=(int)$match['home_score'];$y=(int)$match['away_score'];$p=pcScoreProb($m,$x,$y);$rank=isset($m['ranks'][$x.'-'.$y])?$m['ranks'][$x.'-'.$y]-1:false;
   $h.='<p>The bookmakers made <strong>'.$x.'–'.$y.'</strong> '.($p>0?'a <strong>'.pcOneIn($p).'</strong> chance ('.number_format(100*$p,1).'%)'.($rank!==false?', the '.pcScoreOrdinal($rank+1).' most likely score':''):'too unlikely to price').'. Their favourite was '.pcScoreLabel($m['fav']).'.</p>';}
  $h.='<table class="scoreoddstable"><thead><tr><th>Score</th><th>Chance</th><th>Expected pts</th></tr></thead><tbody>';
  foreach(array_slice($m['probs'],0,6,true) as $k=>$p){[$a,$b]=array_map('intval',explode('-',$k));$h.='<tr'.($done&&$k===$match['home_score'].'-'.$match['away_score']?' class="hit"':'').'><td><b>'.pcScoreLabel($k).'</b></td><td>'.number_format(100*$p,1).'% <small>('.pcOneIn($p).')</small></td><td>'.number_format(pcScoreEv($m,$a,$b),2).'</td></tr>';}

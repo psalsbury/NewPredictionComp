@@ -1,0 +1,8 @@
+[Unit]
+Description=Prune settled PredictionComp correct-score prices nightly
+[Timer]
+OnCalendar=*-*-* 03:40:00 Europe/London
+Persistent=true
+RandomizedDelaySec=120
+[Install]
+WantedBy=timers.target

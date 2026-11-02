@@ -140,7 +140,9 @@ def from_database(db, canonical=lambda name:name, archive=(), now=None):
         if not isinstance(exc,sqlite3.OperationalError) or 'no such table' not in str(exc): raise
     score_odds={}
     try:
-        for external,h,a,price,observed,fetched in db.execute('SELECT f.external_id,s.home_goals,s.away_goals,s.price,s.observed_at,s.fetched_at FROM fixture_score_odds s JOIN fixtures f ON f.id=s.fixture_id'):
+        # skip finished matches whose grid was pruned by bin/prune_odds.py (only some scorelines remain)
+        pruned=' WHERE s.fixture_id NOT IN (SELECT fixture_id FROM fixture_score_summary)' if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='fixture_score_summary'").fetchone() else ''
+        for external,h,a,price,observed,fetched in db.execute('SELECT f.external_id,s.home_goals,s.away_goals,s.price,s.observed_at,s.fetched_at FROM fixture_score_odds s JOIN fixtures f ON f.id=s.fixture_id'+pruned):
             m=score_odds.setdefault(external,{'prices':{},'observed_at':observed,'fetched_at':fetched})
             m['prices'][(int(h),int(a))]=float(price)
     except Exception as exc:
