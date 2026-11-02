@@ -34,7 +34,7 @@ function pcWeekCard(PDO $db, int $uid, array $user, int $season, int $week, arra
             $place = ['rank' => 1 + count(array_filter($all, fn($r) => (int)$r['pts'] > $mine)), 'of' => (int)$l['member_count'], 'name' => (string)$l['name'], 'code' => (string)$l['code']];
         } else {
             $q = $db->prepare("SELECT u.id, COALESCE(SUM(CASE WHEN f.id IS NOT NULL THEN p.points ELSE 0 END),0) pts FROM users u LEFT JOIN predictions p ON p.user_id=u.id
-                LEFT JOIN fixtures f ON f.id=p.fixture_id AND f.kickoff_utc>=? AND f.kickoff_utc<? WHERE (" . pc_listed_sql() . " OR u.id=?) GROUP BY u.id");
+                LEFT JOIN fixtures f ON f.id=p.fixture_id AND julianday(f.kickoff_utc)>=julianday(?) AND julianday(f.kickoff_utc)<julianday(?) WHERE (" . pc_listed_sql() . " OR u.id=?) GROUP BY u.id");
             $q->execute([$seasonStart->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'), $seasonEnd->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'), $uid]);
             $all = $q->fetchAll(PDO::FETCH_ASSOC); $mine = 0;
             foreach ($all as $r) if ((int)$r['id'] === $uid) $mine = (int)$r['pts'];

@@ -93,7 +93,7 @@ $leaderPage=max(1,min($leaderPages,(int)($_GET['page']??1)));
 $leaderOffset=($leaderPage-1)*$leaderPageSize;
 $leaderSql="SELECT u.id,u.display_name,CASE WHEN ".pc_listed_sql()." THEN 1 ELSE 0 END listed,CAST(COALESCE(u.is_bot,0) AS INTEGER) is_bot,CAST(COALESCE(u.bot_grade,5) AS INTEGER) bot_grade,COALESCE(SUM(CASE WHEN f.id IS NOT NULL THEN p.points ELSE 0 END),0) pts
  FROM users u LEFT JOIN predictions p ON p.user_id=u.id
- LEFT JOIN fixtures f ON f.id=p.fixture_id AND f.kickoff_utc>=:period_start AND f.kickoff_utc<:period_end
+ LEFT JOIN fixtures f ON f.id=p.fixture_id AND julianday(f.kickoff_utc)>=julianday(:period_start) AND julianday(f.kickoff_utc)<julianday(:period_end)
  ".$leaderScope." GROUP BY u.id ORDER BY pts DESC,u.is_bot ASC,u.id LIMIT ".$leaderPageSize." OFFSET ".$leaderOffset;
 // Locate the current player's page using the same ordering as the table.
 $leaderFocusMe=$uid>0&&((($_GET['focus']??'')==='me')||((($_GET['screen']??'')==='leagues')&&!isset($_GET['page'])));

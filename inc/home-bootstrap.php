@@ -54,27 +54,46 @@ function pc_google_config(): ?array {
  $c=json_decode((string)file_get_contents($p),true);
  return is_array($c)&&!empty($c['client_id'])?$c:null;
 }
-function pc_merge_account(PDO $db,int $currentId,string $email,?string $googleSub=null,?string $name=null,?string $avatar=null): string {
+// First 24 characters without splitting a multi-byte character (no mbstring on this server).
+function pc_cut24(string $v):string{return preg_match('/^.{0,24}/us',$v,$m)?$m[0]:substr($v,0,24);}
+// Called after someone proves they own $email (Google sign-in or an emailed sign-in link).
+// Rules (code review 2026-11-02):
+//  * Only a guest account (no email, Google or password) is ever merged into another account, and only
+//    when $allowMerge is true. A full account is never merged or deleted: the device just switches to
+//    the account being signed into.
+//  * A full account signing in with a different, new email gets a new account rather than having its
+//    email overwritten.
+//  * If the email belongs to someone else's account whose email was never verified and which has a
+//    password (an email claimed at sign-up without proof), that password is removed and the account's
+//    login token replaced, so whoever set it loses access. The owner can set a new password.
+function pc_merge_account(PDO $db,int $currentId,string $email,?string $googleSub=null,?string $name=null,?string $avatar=null,bool $allowMerge=true): string {
  $email=strtolower(trim($email));$db->beginTransaction();
  try{
+  $cur=null;if($currentId>0){$s=$db->prepare('SELECT * FROM users WHERE id=?');$s->execute([$currentId]);$cur=$s->fetch(PDO::FETCH_ASSOC)?:null;}
+  $curIsGuest=$cur&&empty($cur['email'])&&empty($cur['google_sub'])&&empty($cur['password_hash'])&&empty($cur['is_bot']);
   $target=null;
   if($googleSub){$s=$db->prepare('SELECT * FROM users WHERE google_sub=?');$s->execute([$googleSub]);$target=$s->fetch(PDO::FETCH_ASSOC)?:null;}
   if(!$target){$s=$db->prepare('SELECT * FROM users WHERE email=?');$s->execute([$email]);$target=$s->fetch(PDO::FETCH_ASSOC)?:null;}
-  if(!$target && $currentId<=0){
+  if(!$target && !($cur&&empty($cur['email'])&&empty($cur['is_bot']))){
+   // nobody has this email and the current account (if any) already has its own: start a new account
    $newToken=token();$display=trim((string)($name??''));if($display==='')$display=strstr($email,'@',true)?:'Player';
    $s=$db->prepare('INSERT INTO users(token,display_name,email,email_verified_at,google_sub,avatar_url,onboarding_seen) VALUES(?,?,?,CURRENT_TIMESTAMP,?,?,0)');
-   $s->execute([$newToken,substr($display,0,24),$email,$googleSub,$avatar]);$db->commit();return $newToken;
+   $s->execute([$newToken,pc_cut24($display),$email,$googleSub,$avatar]);$db->commit();return $newToken;
   }
   if($target && (int)$target['id']!==$currentId){
    $tid=(int)$target['id'];
-   $db->prepare('INSERT OR IGNORE INTO predictions(user_id,fixture_id,home_score,away_score,points,saved_at) SELECT ?,fixture_id,home_score,away_score,points,saved_at FROM predictions WHERE user_id=?')->execute([$tid,$currentId]);
-   $db->prepare('INSERT OR IGNORE INTO league_members(league_id,user_id,joined_at) SELECT league_id,?,joined_at FROM league_members WHERE user_id=?')->execute([$tid,$currentId]);
-   $db->prepare('UPDATE leagues SET owner_user_id=? WHERE owner_user_id=?')->execute([$tid,$currentId]);
-   $db->prepare('DELETE FROM predictions WHERE user_id=?')->execute([$currentId]);
-   $db->prepare('DELETE FROM league_members WHERE user_id=?')->execute([$currentId]);
-   $db->prepare('DELETE FROM users WHERE id=?')->execute([$currentId]);
-  } else {$tid=$currentId;$target=$GLOBALS['user'];}
-  $display=$name&&preg_match('/^Player [A-F0-9]{4}$/',(string)($target['display_name']??''))?$name:null;
+   if($allowMerge&&$curIsGuest){
+    $db->prepare('INSERT OR IGNORE INTO predictions(user_id,fixture_id,home_score,away_score,points,saved_at) SELECT ?,fixture_id,home_score,away_score,points,saved_at FROM predictions WHERE user_id=?')->execute([$tid,$currentId]);
+    $db->prepare('INSERT OR IGNORE INTO league_members(league_id,user_id,joined_at) SELECT league_id,?,joined_at FROM league_members WHERE user_id=?')->execute([$tid,$currentId]);
+    $db->prepare('UPDATE leagues SET owner_user_id=? WHERE owner_user_id=?')->execute([$tid,$currentId]);
+    $db->prepare('DELETE FROM predictions WHERE user_id=?')->execute([$currentId]);
+    $db->prepare('DELETE FROM league_members WHERE user_id=?')->execute([$currentId]);
+    $db->prepare('DELETE FROM users WHERE id=?')->execute([$currentId]);
+   }
+   if(empty($target['email_verified_at'])&&!empty($target['password_hash']))
+    $db->prepare('UPDATE users SET password_hash=NULL,token=? WHERE id=?')->execute([token(),$tid]);
+  } else {$tid=$currentId;$target=$cur;}
+  $display=$name&&preg_match('/^Player [A-F0-9]{4}$/',(string)($target['display_name']??''))?pc_cut24($name):null;
   $sql='UPDATE users SET email=?,email_verified_at=CURRENT_TIMESTAMP';
   $vals=[$email];
   if($googleSub){$sql.=',google_sub=?';$vals[]=$googleSub;}

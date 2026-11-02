@@ -19,16 +19,41 @@ if(($_GET['auth']??'')==='logout'){
  header('Location: /');exit;
 }
 if(isset($_GET['login_token'])){
+ // Opening the link only shows a confirmation page; signing in needs the button (a POST with the session's
+ // CSRF token). Email link scanners therefore can't use the link up, and nobody is switched into someone
+ // else's account by a forwarded link without seeing whose it is. Guest picks on this device are merged
+ // automatically only on the device that asked for the link; elsewhere the player chooses.
  $raw=(string)$_GET['login_token'];$hash=hash('sha256',$raw);
  $s=$db->prepare("SELECT * FROM auth_magic_links WHERE token_hash=? AND used_at IS NULL AND expires_at>datetime('now')");
  $s->execute([$hash]);$link=$s->fetch(PDO::FETCH_ASSOC);
- if($link){
-  $db->prepare('UPDATE auth_magic_links SET used_at=CURRENT_TIMESTAMP WHERE id=?')->execute([$link['id']]);
-  $token=pc_merge_account($db,$uid,(string)$link['email']);pc_cookie($token);pc_join_pending($db,$token);
+ if(!$link){header('Location: /?auth_error=expired_link');exit;}
+ $sameDevice=$uid>0&&(int)$link['originating_user_id']===$uid;
+ $isGuest=$uid>0&&empty($user['email'])&&empty($user['google_sub'])&&empty($user['password_hash']);
+ $guestPicks=0;if($isGuest){$c=$db->prepare('SELECT COUNT(*) FROM predictions WHERE user_id=?');$c->execute([$uid]);$guestPicks=(int)$c->fetchColumn();}
+ if($_SERVER['REQUEST_METHOD']==='POST'){
+  if(!hash_equals((string)($_SESSION['registration_csrf']??''),(string)($_POST['csrf']??''))){header('Location: '.strtok((string)$_SERVER['REQUEST_URI'],'#'));exit;}
+  $mark=$db->prepare('UPDATE auth_magic_links SET used_at=CURRENT_TIMESTAMP WHERE id=? AND used_at IS NULL');$mark->execute([$link['id']]);
+  if($mark->rowCount()!==1){header('Location: /?auth_error=expired_link');exit;}
+  $token=pc_merge_account($db,$uid,(string)$link['email'],null,null,null,$sameDevice||!empty($_POST['merge_guest']));pc_cookie($token);pc_join_pending($db,$token);
   $resetUser=$db->prepare('SELECT id FROM users WHERE token=?');$resetUser->execute([$token]);session_regenerate_id(true);$_SESSION['password_reset_user_id']=(int)$resetUser->fetchColumn();
   header('Location: /account?reset_password=1');exit;
  }
- header('Location: /?auth_error=expired_link');exit;
+ $who=$db->prepare('SELECT display_name FROM users WHERE LOWER(email)=? AND COALESCE(is_bot,0)=0');$who->execute([strtolower((string)$link['email'])]);$whoName=(string)($who->fetchColumn()?:'');
+ $e=fn($v)=>htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');
+ [$local,$domain]=array_pad(explode('@',(string)$link['email'],2),2,'');$masked=strlen($local)<=2?$local:substr($local,0,2).'…';
+ header('Cache-Control: no-store');header('Referrer-Policy: no-referrer');header('X-Robots-Tag: noindex');
+ echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in | PredictionComp</title><meta name="robots" content="noindex">'
+  .'<link rel="stylesheet" href="/assets/home.css?v=3"><link rel="stylesheet" href="/assets/theme.css?v=20261019"><link rel="stylesheet" href="/assets/responsive.css?v=20261030">'
+  .'<style>.signinconfirm{max-width:460px;margin:12vh auto 0;padding:28px 26px}.signinconfirm h1{font-size:26px;margin:0 0 10px}.signinconfirm p{line-height:1.5}.signinconfirm label{display:flex;gap:10px;align-items:flex-start;margin:16px 0;line-height:1.4}.signinconfirm input[type=checkbox]{width:20px;height:20px;flex:none;margin-top:2px}.signinconfirm .btn{width:100%;margin-top:8px}.signinconfirm .cancel{display:block;text-align:center;margin-top:14px}</style></head><body>'
+  .'<main class="standalonepanel signinconfirm"><div class="sectionlabel">YOUR ACCOUNT</div><h1>Sign in to PredictionComp</h1>'
+  .'<p>This link signs you in to the account for <strong>'.$e($masked.'@'.$domain).'</strong>'.($whoName!==''?' (player name <strong>'.$e($whoName).'</strong>)':'').'.</p>'
+  .($uid>0&&!$isGuest&&!$sameDevice?'<p>You are currently signed in as <strong>'.$e($user['display_name']).'</strong>. That account stays as it is; this device will switch accounts.</p>':'')
+  .'<form method="post"><input type="hidden" name="csrf" value="'.$e($_SESSION['registration_csrf']).'">'
+  .($isGuest&&$guestPicks>0&&!$sameDevice?'<label><input type="checkbox" name="merge_guest" value="1"><span>Also move the <strong>'.$guestPicks.'</strong> prediction'.($guestPicks===1?'':'s').' made on this device as guest <strong>'.$e($user['display_name']).'</strong> into this account</span></label>':'')
+  .($isGuest&&$guestPicks>0&&$sameDevice?'<p>Your '.$guestPicks.' guest prediction'.($guestPicks===1?'':'s').' on this device will be added to this account.</p>':'')
+  .'<button type="submit" class="btn">Sign in</button></form><a class="cancel" href="/">Cancel</a>'
+  .'<p class="performancenote" style="margin-top:18px">If you did not ask for this link, press Cancel. Nothing changes until you press Sign in.</p></main></body></html>';
+ exit;
 }
 if(($_GET['auth']??'')==='google_start'){
  $cfg=pc_google_config();
