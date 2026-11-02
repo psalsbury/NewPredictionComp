@@ -95,7 +95,7 @@ if($kind==='sim1'){
 if($kind==='guides'||$kind==='guide'){
  $all=$db->query('SELECT * FROM fixtures ORDER BY julianday(kickoff_utc)')->fetchAll(PDO::FETCH_ASSOC);$weeks=[];
  foreach($all as $f)$weeks[weekKey($f['kickoff_utc'])][]=$f;
- $currentWeek=weekKey(gmdate('c'));$upcomingWeeks=array_filter($weeks,fn($key)=>$key>=$currentWeek&&pcSeoGuideReady($key),ARRAY_FILTER_USE_KEY);$pastWeeks=array_reverse(array_filter($weeks,fn($key)=>$key<$currentWeek,ARRAY_FILTER_USE_KEY),true);$guideWeeks=$upcomingWeeks+$pastWeeks;
+ $currentWeek=weekKey(gmdate('c'));$upcomingWeeks=array_filter($weeks,fn($key)=>$key>=$currentWeek&&pcSeoGuideReady($key),ARRAY_FILTER_USE_KEY);$pastWeeks=array_reverse(array_filter($weeks,fn($key)=>$key<$currentWeek,ARRAY_FILTER_USE_KEY),true);$guideWeeks=$upcomingWeeks+$pastWeeks;krsort($guideWeeks,SORT_STRING);
  $path='/prediction-guides';$title='Weekly Premier League prediction guides';$description='Plan your Premier League score predictions with weekly fixtures, recent form, match previews and result reviews.';
  if($kind==='guide'){$key=$_GET['week']??'';if(!isset($weeks[$key])){http_response_code(404);$kind='missing';$title='Prediction guide not found';}else{$rows=$weeks[$key];$path.='/'.$key;$range=date('j',strtotime($key)).(date('M',strtotime($key))===date('M',strtotime($key.' +6 days'))?'':' '.date('M',strtotime($key))).'–'.date('j M Y',strtotime($key.' +6 days'));$title='Premier League predictions: '.$range;$games=array_slice(array_map(fn($f)=>$f['home'].' v '.$f['away'],$rows),0,2);$description='Form, previews and results for all '.count($rows).' Premier League matches on '.$range.($games?', including '.implode(' and ',$games):'').'. Predict every score for free.';}}
 }
