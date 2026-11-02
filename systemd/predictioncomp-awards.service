@@ -1,0 +1,10 @@
+[Unit]
+Description=PredictionComp: work out player awards from finished matches
+After=network-online.target
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+ExecStart=/usr/bin/python3 /opt/predictioncomp/bin/awards.py
+TimeoutStartSec=300
+UMask=0007

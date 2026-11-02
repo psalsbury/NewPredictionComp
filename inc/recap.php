@@ -23,7 +23,7 @@ function recapData(PDO $db,array $ids):array{
  $odds=(bool)$db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='fixture_odds'")->fetchColumn();
  $prices=$odds?'o.home price_home,o.draw price_draw,o.away price_away,o.observed_at,o.fetched_at':'NULL price_home,NULL price_draw,NULL price_away,NULL observed_at,NULL fetched_at';
  $join=$odds?'LEFT JOIN fixture_odds o ON o.fixture_id=f.id':'';
- $rows=$db->query("SELECT u.id user_id,u.display_name,f.id,f.home,f.away,f.kickoff_utc,f.home_score actual_home,f.away_score actual_away,p.home_score,p.away_score,$prices FROM predictions p JOIN users u ON u.id=p.user_id JOIN fixtures f ON f.id=p.fixture_id $join WHERE f.id IN ($ids) AND COALESCE(u.is_bot,0)=0 AND ".pc_listed_sql()." AND f.status IN ('FT','AET','PEN') AND f.home_score IS NOT NULL AND f.away_score IS NOT NULL AND julianday(f.kickoff_utc)<=julianday('now') ORDER BY julianday(f.kickoff_utc),f.id,u.id")->fetchAll(PDO::FETCH_ASSOC);
+ $rows=$db->query("SELECT u.id user_id,u.display_name,f.id,f.home,f.away,f.kickoff_utc,f.home_score actual_home,f.away_score actual_away,p.home_score,p.away_score,p.joker,$prices FROM predictions p JOIN users u ON u.id=p.user_id JOIN fixtures f ON f.id=p.fixture_id $join WHERE f.id IN ($ids) AND COALESCE(u.is_bot,0)=0 AND ".pc_listed_sql()." AND f.status IN ('FT','AET','PEN') AND f.home_score IS NOT NULL AND f.away_score IS NOT NULL AND julianday(f.kickoff_utc)<=julianday('now') ORDER BY julianday(f.kickoff_utc),f.id,u.id")->fetchAll(PDO::FETCH_ASSOC);
  // SIM1 average points per match, for the humans-v-bots comparison.
  $simAvg=[];
  foreach($db->query("SELECT f.id,f.home_score actual_home,f.away_score actual_away,p.home_score,p.away_score FROM predictions p JOIN users u ON u.id=p.user_id JOIN fixtures f ON f.id=p.fixture_id WHERE f.id IN ($ids) AND u.is_bot=1 AND u.bot_grade=1") as $b){$simAvg[(int)$b['id']][]=recapPoints($b);}
@@ -33,7 +33,8 @@ function recapData(PDO $db,array $ids):array{
  foreach($rows as $r){
   $uid=(int)$r['user_id'];$fid=(int)$r['id'];$pts=recapPoints($r);
   if(!isset($s['players'][$uid]))$s['players'][$uid]=['name'=>$r['display_name'],'points'=>0,'picks'=>0,'correct'=>0,'exact'=>0,'simPicks'=>0,'simDiff'=>0.0];
-  $p=&$s['players'][$uid];$p['points']+=$pts;$p['picks']++;$p['correct']+=(int)($pts>0);$p['exact']+=(int)($pts===5);
+  $p=&$s['players'][$uid];$p['points']+=pc_points((int)$r['home_score'],(int)$r['away_score'],(int)$r['actual_home'],(int)$r['actual_away'],!empty($r['joker'])); // table = competition points (joker doubles); other stats use raw 5/3/0
+  $p['picks']++;$p['correct']+=(int)($pts>0);$p['exact']+=(int)($pts===5);
   if(isset($simAvg[$fid])){$p['simPicks']++;$p['simDiff']+=$pts-$simAvg[$fid];$sim['human']+=$pts;$sim['bot']+=$simAvg[$fid];$sim['picks']++;}
   unset($p);
   if(!isset($s['matches'][$fid]))$s['matches'][$fid]=['fixture'=>$r,'picks'=>0,'correct'=>0,'exact'=>0];

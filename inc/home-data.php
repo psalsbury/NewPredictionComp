@@ -50,11 +50,17 @@ if($uid<1&&!$_GET){
 $afterSignIn='/?signed_in=1#predict';
 if(!empty($_SESSION['pending_league_code'])){$q=$db->prepare('SELECT id FROM leagues WHERE code=?');$q->execute([(string)$_SESSION['pending_league_code']]);$pendingLeagueId=(int)$q->fetchColumn();$afterSignIn=$pendingLeagueId?'/?joined_league=1&league='.$pendingLeagueId.'#predict':'/leagues';}
 $ps=$db->prepare('SELECT fixture_id,home_score,away_score FROM predictions WHERE user_id=?');$ps->execute([$uid]);$pred=[];foreach($ps as $p)$pred[$p['fixture_id']]=[$p['home_score'],$p['away_score']];
+// Jokers (one per gameweek, double points): $jokers[fixture_id]=true; $jokerWeeks['season-gw'] for the picker.
+$jokers=[];$jokerWeeks=[];$fixtureGw=[];
+$jq=$db->prepare("SELECT p.fixture_id,g.season,g.gameweek,f.home,f.away,julianday(f.kickoff_utc)<=julianday('now') started FROM predictions p JOIN fixtures f ON f.id=p.fixture_id LEFT JOIN fixture_gameweeks g ON g.fixture_id=p.fixture_id WHERE p.user_id=? AND p.joker=1");$jq->execute([$uid]);
+foreach($jq as $j){$jokers[(int)$j['fixture_id']]=true;if($j['season']!==null)$jokerWeeks[$j['season'].'-'.$j['gameweek']]=['fixture'=>(int)$j['fixture_id'],'started'=>(bool)$j['started'],'label'=>pcClubName($j['home'],$db).' v '.pcClubName($j['away'],$db)];}
+require_once PC_ROOT.'/inc/pick-insights.php';$pickInsights=pcPickInsights($db,array_map(fn($f)=>(int)$f['id'],$fixtures),$uid);
+if($fixtures){$gq=$db->query('SELECT fixture_id,season,gameweek FROM fixture_gameweeks WHERE fixture_id IN ('.implode(',',array_map(fn($f)=>(int)$f['id'],$fixtures)).')');foreach($gq as $g)$fixtureGw[(int)$g['fixture_id']]=$g['season'].'-'.$g['gameweek'];}
 require PC_ROOT.'/player-nav.php';
 require_once PC_ROOT.'/data-status.php';
 require PC_ROOT.'/matchweek.php';
 $matchweek=matchweekSummary($db,$pred,time(),['fixtures'=>$fixtures,'label'=>'Matchweek '.$selectedFixtureWeek.' · '.$fixtureSeason.'/'.substr((string)($fixtureSeason+1),2)]);
-$historyStmt=$db->prepare("SELECT f.id fixture_id,f.round,f.kickoff_utc,f.home,f.away,f.home_score actual_home,f.away_score actual_away,f.status,p.home_score predicted_home,p.away_score predicted_away,COALESCE(p.points,0) points
+$historyStmt=$db->prepare("SELECT f.id fixture_id,f.round,f.kickoff_utc,f.home,f.away,f.home_score actual_home,f.away_score actual_away,f.status,p.home_score predicted_home,p.away_score predicted_away,COALESCE(p.points,0) points,p.joker
  FROM predictions p JOIN fixtures f ON f.id=p.fixture_id
  WHERE p.user_id=? AND julianday(f.kickoff_utc)<=julianday('now') AND COALESCE(f.status,'')<>'SIM'
  ORDER BY f.kickoff_utc DESC LIMIT 100");

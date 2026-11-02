@@ -59,12 +59,13 @@ if(isset($_GET['api'])){
   $name=(string)$personInfo['display_name'];
   $botInfo=null;
   if((int)$personInfo['is_bot']===1){$botInfo=['id'=>$playerId,'grade'=>max(1,min(5,(int)$personInfo['bot_grade'])),'title'=>(string)($personInfo['title']??''),'bio'=>(string)($personInfo['bio']??''),'avatar'=>'/bot-avatar.php?id='.$playerId];}
-  $results=$db->prepare("SELECT f.round,f.kickoff_utc,f.home,f.away,f.home_score actual_home,f.away_score actual_away,p.home_score predicted_home,p.away_score predicted_away,COALESCE(p.points,0) points
+  $results=$db->prepare("SELECT f.round,f.kickoff_utc,f.home,f.away,f.home_score actual_home,f.away_score actual_away,p.home_score predicted_home,p.away_score predicted_away,COALESCE(p.points,0) points,p.joker
    FROM predictions p JOIN fixtures f ON f.id=p.fixture_id
    WHERE p.user_id=:user_id AND julianday(f.kickoff_utc)>=julianday(:period_start) AND julianday(f.kickoff_utc)<julianday(:period_end) AND julianday(f.kickoff_utc)<=julianday('now') AND COALESCE(f.status,'') NOT IN ('SIM','PST','CANC','POSTPONED','CANCELLED')
    ORDER BY f.kickoff_utc DESC LIMIT 100");
   $results->execute([':user_id'=>$playerId,':period_start'=>$start->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),':period_end'=>$end->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s')]);
-  echo json_encode(['ok'=>true,'name'=>$name,'period_title'=>$title,'results'=>$results->fetchAll(PDO::FETCH_ASSOC),'bot'=>$botInfo]);exit;
+  require_once PC_ROOT.'/inc/awards.php';
+  echo json_encode(['ok'=>true,'name'=>$name,'period_title'=>$title,'results'=>$results->fetchAll(PDO::FETCH_ASSOC),'bot'=>$botInfo,'awards'=>pcAwardsFor($db,$playerId,12)]);exit;
  }
  if($_GET['api']==='save'){
   if(!pc_csrf_ok($in))pc_auth_error(403,'Please refresh the page and try again.');
@@ -72,10 +73,29 @@ if(isset($_GET['api'])){
   $id=(int)($in['fixture_id']??0);$h=max(0,min(15,(int)($in['home']??0)));$a=max(0,min(15,(int)($in['away']??0)));
   $f=$db->prepare("SELECT kickoff_utc FROM fixtures WHERE id=?");$f->execute([$id]);$kick=$f->fetchColumn();
   if(!$kick||strtotime($kick)<=time()){http_response_code(409);echo json_encode(['ok'=>false,'error'=>'Prediction locked']);exit;}
+  $db->beginTransaction();
+  try{
   $s=$db->prepare("INSERT INTO predictions(user_id,fixture_id,home_score,away_score) VALUES(?,?,?,?) ON CONFLICT(user_id,fixture_id) DO UPDATE SET home_score=excluded.home_score,away_score=excluded.away_score,saved_at=CURRENT_TIMESTAMP");$s->execute([$uid,$id,$h,$a]);
+  // Joker: one per gameweek, doubles this match's points. Only sent by the score picker; absent = unchanged.
+  $jokerOut=null;$jokerCleared=[];
+  if(array_key_exists('joker',$in)){
+   if(!empty($in['joker'])){
+    $gw=$db->prepare('SELECT season,gameweek FROM fixture_gameweeks WHERE fixture_id=?');$gw->execute([$id]);$gw=$gw->fetch(PDO::FETCH_ASSOC);
+    if(!$gw){$db->rollBack();pc_auth_error(400,'A joker can only be played on a match in a gameweek.');}
+    $o=$db->prepare("SELECT p.fixture_id,f.home,f.away,julianday(f.kickoff_utc)<=julianday('now') started FROM predictions p JOIN fixtures f ON f.id=p.fixture_id JOIN fixture_gameweeks g ON g.fixture_id=p.fixture_id WHERE p.user_id=? AND p.joker=1 AND g.season=? AND g.gameweek=? AND p.fixture_id<>?");
+    $o->execute([$uid,$gw['season'],$gw['gameweek'],$id]);
+    foreach($o->fetchAll(PDO::FETCH_ASSOC) as $other){
+     if((int)$other['started']){$db->rollBack();pc_auth_error(409,'Your joker for this gameweek is already played on '.$other['home'].' v '.$other['away'].'.');}
+     $db->prepare('UPDATE predictions SET joker=0 WHERE user_id=? AND fixture_id=?')->execute([$uid,(int)$other['fixture_id']]);$jokerCleared[]=(int)$other['fixture_id'];
+    }
+    $db->prepare('UPDATE predictions SET joker=1 WHERE user_id=? AND fixture_id=?')->execute([$uid,$id]);$jokerOut=true;
+   }else{$db->prepare('UPDATE predictions SET joker=0 WHERE user_id=? AND fixture_id=?')->execute([$uid,$id]);$jokerOut=false;}
+  }
+  $db->commit();
+  }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
   // New players are reported in the daily owner summary (bin/daily_summary.py), not one email each.
   $db->prepare('UPDATE users SET first_played_at=CURRENT_TIMESTAMP WHERE id=? AND first_played_at IS NULL')->execute([$uid]);
-  echo json_encode(['ok'=>true]);exit;
+  echo json_encode(['ok'=>true,'joker'=>$jokerOut,'joker_cleared'=>$jokerCleared]);exit;
  }
  if($_GET['api']==='profile'){if(!pc_csrf_ok($in))pc_auth_error(403,'Please refresh the page and try again.');if($uid<1){http_response_code(401);echo json_encode(['ok'=>false,'error'=>'Sign in to update your account']);exit;}$reminders=array_key_exists('reminders',$in)?(!empty($in['reminders'])?1:0):(int)($user['prediction_reminders']??0);$lead=(int)($in['reminder_lead_hours']??$user['reminder_lead_hours']??24);if(!in_array($lead,[2,24],true)){$lead=24;}$verifySent=false;if($reminders&&pc_reminder_state($user)!=='ready'){if(pc_reminder_state($user)!=='unverified'){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'Add an email to your account to get reminders.']);exit;}$reminders=0;$verifySent=pc_send_reminder_verification($db,$user);}$n=trim((string)($in['name']??''));$club=trim((string)($in['club']??''));$clubs=$premierLeagueClubs;if(strlen($n)<2||strlen($n)>24||($club!==''&&!in_array($club,$clubs,true))){http_response_code(400);echo json_encode(['ok'=>false]);exit;}if($n!==(string)$user['display_name']&&($nameError=pc_display_name_error($db,$n,$uid))){http_response_code($nameError[0]);echo json_encode(['ok'=>false,'error'=>$nameError[1]]);exit;}$s=$db->prepare('UPDATE users SET display_name=?,supported_club=?,prediction_reminders=?,reminder_lead_hours=? WHERE id=?');$s->execute([$n,$club,$reminders,$lead,$uid]);echo json_encode(['ok'=>true,'verify_sent'=>$verifySent]);exit;}
  if($_GET['api']==='reminders'){

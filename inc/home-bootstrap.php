@@ -7,7 +7,8 @@ function pc_front_result(array $f,?array $pick,?array $live=null):string{
  $finished=in_array($f['status'],['FT','AET','PEN'],true)&&$f['home_score']!==null&&$f['away_score']!==null;
  $class='pending';$label='Awaiting result';$points='';
  // Live score (display only): what the pick would earn if the match ended now. Points come from the confirmed result.
- $attrs=' data-live-fixture="'.(int)$f['id'].'"'.($pick!==null?' data-pick="'.(int)$pick[0].'-'.(int)$pick[1].'"':'');
+ $joker=$pick!==null&&!empty($pick[2]);$jk=$joker?' 🃏':''; // joker doubles the points ($pick[2])
+ $attrs=' data-live-fixture="'.(int)$f['id'].'"'.($pick!==null?' data-pick="'.(int)$pick[0].'-'.(int)$pick[1].'"'.($joker?' data-joker="1"':''):'');
  if(!$finished&&$live!==null){
   $lh=(int)$live['home_score'];$la=(int)$live['away_score'];$clock=(string)$live['clock'];
   $html='<div class="frontresult live'.($pick===null?' missing':'').'"'.$attrs.'>';
@@ -15,7 +16,7 @@ function pc_front_result(array $f,?array $pick,?array $live=null):string{
    $exact=(int)$pick[0]===$lh&&(int)$pick[1]===$la;$correct=((int)$pick[0]<=>(int)$pick[1])===($lh<=>$la);
    $html='<div class="frontresult live '.($exact?'exact':($correct?'correct':'wrong')).'"'.$attrs.'>';
    $html.='<span class="frontpick"><small>Your pick</small><b>'.(int)$pick[0].'–'.(int)$pick[1].'</b></span>';
-   $note=($clock==='FT'?'Full time · ':'').'On course for '.($exact?'+5':($correct?'+3':'+0'));
+   $note=($clock==='FT'?'Full time · ':'').'On course for +'.pc_points((int)$pick[0],(int)$pick[1],$lh,$la,$joker).$jk;
   }else{$html.='<span class="frontpick"><small>No pick</small><b>—</b></span>';$note=$clock==='FT'?'Full time · confirming':'No prediction';}
   $html.='<span class="frontactual"><small class="liveclock">'.($clock==='FT'||$clock==='HT'?htmlspecialchars($clock):'Live '.htmlspecialchars($clock)).'</small><b>'.$lh.'–'.$la.'</b></span>';
   return $html.'<small class="frontoutcome">'.htmlspecialchars($note).'</small></div>';
@@ -24,7 +25,7 @@ function pc_front_result(array $f,?array $pick,?array $live=null):string{
   $exact=(int)$pick[0]===(int)$f['home_score']&&(int)$pick[1]===(int)$f['away_score'];
   $correct=((int)$pick[0]<=>(int)$pick[1])===((int)$f['home_score']<=>(int)$f['away_score']);
   $class=$exact?'exact':($correct?'correct':'wrong');
-  $label=$exact?'Exact score':($correct?'Correct result':'Incorrect result');$points=$exact?' +5':($correct?' +3':' +0');
+  $label=$exact?'Exact score':($correct?'Correct result':'Incorrect result');$points=' +'.pc_points((int)$pick[0],(int)$pick[1],(int)$f['home_score'],(int)$f['away_score'],$joker).$jk;
  }elseif($pick===null){$label='No prediction';$class='missing';}
  $html='<div class="frontresult '.$class.'"'.($finished?'':$attrs).'>';
  if($pick!==null)$html.='<span class="frontpick" aria-label="'.$label.$points.' points"><small>Your pick</small><b>'.(int)$pick[0].'–'.(int)$pick[1].'</b></span>';
@@ -88,7 +89,9 @@ function pc_merge_account(PDO $db,int $currentId,string $email,?string $googleSu
   if($target && (int)$target['id']!==$currentId){
    $tid=(int)$target['id'];
    if($allowMerge&&$curIsGuest){
-    $db->prepare('INSERT OR IGNORE INTO predictions(user_id,fixture_id,home_score,away_score,points,saved_at) SELECT ?,fixture_id,home_score,away_score,points,saved_at FROM predictions WHERE user_id=?')->execute([$tid,$currentId]);
+    $db->prepare('INSERT OR IGNORE INTO predictions(user_id,fixture_id,home_score,away_score,points,saved_at,joker) SELECT ?,p.fixture_id,p.home_score,p.away_score,p.points,p.saved_at,
+     CASE WHEN p.joker=1 AND NOT EXISTS(SELECT 1 FROM predictions t JOIN fixture_gameweeks tg ON tg.fixture_id=t.fixture_id JOIN fixture_gameweeks pg ON pg.fixture_id=p.fixture_id
+      WHERE t.user_id=? AND t.joker=1 AND tg.season=pg.season AND tg.gameweek=pg.gameweek) THEN 1 ELSE 0 END FROM predictions p WHERE p.user_id=?')->execute([$tid,$tid,$currentId]);
     $db->prepare('INSERT OR IGNORE INTO league_members(league_id,user_id,joined_at) SELECT league_id,?,joined_at FROM league_members WHERE user_id=?')->execute([$tid,$currentId]);
     $db->prepare('UPDATE leagues SET owner_user_id=? WHERE owner_user_id=?')->execute([$tid,$currentId]);
     $db->prepare('DELETE FROM predictions WHERE user_id=?')->execute([$currentId]);

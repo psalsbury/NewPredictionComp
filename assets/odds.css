@@ -94,3 +94,46 @@
  .resultsodds .bettable .l{min-width:0}
  .resultsodds .bettable th{white-space:normal}
 }
+/* Joker: one per gameweek, double points */
+.jokerbadge{display:inline-flex;align-items:center;gap:3px;margin-right:6px;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(255,200,87,.14);color:#ffd27a;border:1px solid rgba(255,200,87,.45);white-space:nowrap}
+.jokerbadge[hidden]{display:none}
+.pickerjokerwrap{margin-top:10px}
+#scorePickerDialog .pickerjoker{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:1px dashed #5a6f7f;border-radius:10px;background:transparent;color:var(--text,#eef5f8);text-align:left;cursor:pointer;font:inherit}
+#scorePickerDialog .pickerjoker[hidden]{display:none}
+#scorePickerDialog .pickerjoker.on{border-style:solid;border-color:#ffc857;background:rgba(255,200,87,.12)}
+.pickerjoker .pjicon{font-size:22px;line-height:1}
+.pickerjoker .pjtext{display:flex;flex-direction:column;gap:1px}.pickerjoker b{font-size:14px}.pickerjoker small{font-size:11px;color:var(--text-2,#9cabbc)}
+.pickerjoker.on b{color:#ffd27a}
+.pickerjokernote{margin:4px 2px 0;font-size:12px;color:var(--text-2,#9cabbc);min-height:0}
+.pickerjokernote:empty{display:none}
+/* Pick insights after kick-off (inc/pick-insights.php) */
+.pickinsight{grid-column:1/-1;display:flex;flex-wrap:wrap;justify-content:center;gap:2px 12px;font-size:12px;line-height:1.5;color:var(--text-2,#9cabbc);text-align:center;margin-top:4px}
+#predict .fixture>.pickinsight{grid-area:auto!important;grid-column:1/-1!important;grid-row:auto!important}
+.pickinsight b{color:var(--text,#eef5f8)}
+.pickinsight .pimine{color:var(--gold,#78d7cf)}.pickinsight .pimine b{color:inherit}
+.panel .pickinsight{justify-content:flex-start;text-align:left;font-size:14px;margin-top:12px}
+/* Awards (bin/awards.py, inc/awards.php) */
+.awardsbox{margin:0 0 16px}
+.awardsbox h3{margin:0 0 8px;font-size:15px}
+.awardlist{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.awardbadge{display:flex;flex-direction:column;gap:2px;padding:8px 12px;border:1px solid rgba(255,200,87,.35);border-radius:10px;background:rgba(255,200,87,.07);min-width:0;max-width:100%}
+.awardbadge b{font-size:13px;color:#ffd27a}
+.awardbadge small{font-size:11px;color:var(--text-2,#9cabbc);line-height:1.35}
+.awardsempty{font-size:13px;color:var(--text-2,#9cabbc);margin:0}
+.playerawards{margin:0 0 12px}
+/* League head-to-heads (inc/h2h.php) */
+.h2hbox h3{margin:0 0 4px;font-size:18px}
+.h2hsub{margin:0 0 10px;font-size:13px;color:var(--text-2,#9cabbc)}
+.h2hpairs{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:6px}
+.h2hpairs li{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--line,#2a4152);border-radius:10px;font-size:14px}
+.h2hpairs li.mine{border-color:var(--gold,#78d7cf);background:rgba(120,215,207,.07)}
+.h2hpairs .h2ha{text-align:right}.h2hpairs .h2hb{text-align:left}
+.h2hpairs b{font-family:var(--display,inherit);font-size:17px;min-width:56px;text-align:center}
+.h2hpairs .lead{font-weight:700;color:#35df7b}
+.h2htablewrap{overflow-x:auto}
+.h2htable{width:100%;border-collapse:collapse;font-size:13px}
+.h2htable th{font-size:11px;font-weight:600;color:var(--text-2,#9cabbc);padding:6px;text-align:right;border-bottom:1px solid var(--line,#2a4152)}
+.h2htable td{padding:7px 6px;text-align:right;border-bottom:1px solid var(--line,#22394a)}
+.h2htable .l{text-align:left}.h2htable tr.mine td{background:rgba(120,215,207,.07)}
+.h2hnote{font-size:12px;color:var(--text-2,#9cabbc);margin:8px 0 0}
+#leader .h2hbox{margin:0 0 16px}

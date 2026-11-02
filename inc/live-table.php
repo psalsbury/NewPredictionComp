@@ -40,9 +40,9 @@ function pcLiveTable(PDO $db, int $uid, int $leagueId, DateTimeImmutable $start,
     $ids = implode(',', array_map(fn($m) => (int)$m['id'], $live));
     $byFixture = [];
     foreach ($live as $m) $byFixture[(int)$m['id']] = $m;
-    foreach ($db->query("SELECT user_id, fixture_id, home_score, away_score FROM predictions WHERE fixture_id IN ($ids)") as $p) {
+    foreach ($db->query("SELECT user_id, fixture_id, home_score, away_score, joker FROM predictions WHERE fixture_id IN ($ids)") as $p) {
         $u = (int)$p['user_id']; $m = $byFixture[(int)$p['fixture_id']];
-        if (isset($rows[$u])) $rows[$u]['live'] += pcPickPoints((int)$p['home_score'], (int)$p['away_score'], (int)$m['h'], (int)$m['a']);
+        if (isset($rows[$u])) $rows[$u]['live'] += pcPickPoints((int)$p['home_score'], (int)$p['away_score'], (int)$m['h'], (int)$m['a'], (bool)$p['joker']);
     }
     $rank = function (array $list, string $key): array {
         usort($list, fn($a, $b) => ($b[$key] <=> $a[$key]) ?: ($a['is_bot'] <=> $b['is_bot']) ?: ($a['id'] <=> $b['id']));

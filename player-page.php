@@ -38,7 +38,8 @@ if($view==='leagues'&&($selectedLeagueId||isset($_GET['global']))){
 }
 $html=str_replace('</head>',$css.'</head>',$html);
 if($view==='results'&&$uid>0){
- require_once __DIR__.'/inc/results-odds.php';
+ require_once __DIR__.'/inc/results-odds.php';require_once __DIR__.'/inc/awards.php';
+ $html=str_replace('<div class="historylist" id="matchesPanel"',pcAwardsHtml(pcAwardsFor($db,$uid),'Your awards','No awards yet. Win a gameweek, land a hat-trick of exact scores or hit the jackpot with your joker.').'<div class="historylist" id="matchesPanel"',$html);
  $oddsTab='<button type="button" id="oddsTab" role="tab" aria-controls="oddsPanel" aria-selected="false" tabindex="-1" onclick="showResultsTab(\'odds\')">£1 a match</button>';
  $html=preg_replace_callback('/(<button\b[^>]*id="performanceTab"[^>]*>.*?<\/button>)/s',fn($m)=>$m[1].$oddsTab,$html,1);
  $oddsPeriods=personalOddsPeriods($db,$uid,$seasonYear,is_string($_GET['odds_period']??null)?$_GET['odds_period']:'');

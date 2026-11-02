@@ -171,9 +171,11 @@ def scoreboard_results(c):
  return updated
 
 def score(c):
+ # predictions.points = competition points (a joker doubles the match); see bin/scoring.py
+ joker='joker' if any(r[1]=='joker' for r in c.execute('PRAGMA table_info(predictions)')) else '0'
  for fid,h,a in c.execute("SELECT id,home_score,away_score FROM fixtures WHERE status IN ('FT','AET','PEN') AND home_score IS NOT NULL AND away_score IS NOT NULL").fetchall():
-  for pid,ph,pa in c.execute('SELECT id,home_score,away_score FROM predictions WHERE fixture_id=?',(fid,)).fetchall():
-   pts=score_points(ph,pa,h,a)
+  for pid,ph,pa,jk in c.execute(f'SELECT id,home_score,away_score,{joker} FROM predictions WHERE fixture_id=?',(fid,)).fetchall():
+   pts=score_points(ph,pa,h,a,bool(jk))
    c.execute('UPDATE predictions SET points=? WHERE id=? AND points IS NOT ?',(pts,pid,pts))  # skip unchanged rows (avoids rewriting every row + index each run)
 def run_sync():
  c=sqlite3.connect(DB)
