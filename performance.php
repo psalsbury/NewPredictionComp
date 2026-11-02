@@ -26,7 +26,7 @@ function renderPersonalPerformance(array $s):void{
  echo '<div class="performanceintro">Your season so far · Completed matches you predicted</div>';
  if(!$s['played']){echo '<div class="emptyhistory">Your performance will appear after your first predicted match finishes.</div>';return;}
  echo '<div class="performancegrid">';
- foreach([[$s['points'],'Points'],[$s['exact'],'Exact scores'],[$s['correct'].' / '.$s['played'],'Correct results'],[$s['accuracy'].'%','Result accuracy']] as [$value,$label])echo '<div><strong>'.htmlspecialchars((string)$value).'</strong><span>'.$label.'</span></div>';
+ foreach([[$s['points'],'Points'],[$s['exact'].' / '.$s['played'],'Exact scores'],[$s['correct'].' / '.$s['played'],'Correct results'],[$s['accuracy'].'%','Result accuracy']] as [$value,$label])echo '<div><strong>'.htmlspecialchars((string)$value).'</strong><span>'.$label.'</span></div>';
  echo '</div><p class="performancenote">Correct results include exact scores. '.$s['resultOnly'].' earned 3 points for the result without the exact score.</p>';
  $sim=$s['sim'];echo '<section class="performancepanel"><h3>Beat SIM1</h3>';
  if(!$sim['compared'])echo '<p>No completed matches with both your prediction and SIM1 predictions yet.</p>';
