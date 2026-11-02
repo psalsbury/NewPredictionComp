@@ -22,3 +22,38 @@
 .scoreoddstable th{font-size:13px;color:var(--text-2,#9cabbc);font-weight:600}
 .scoreoddstable small{color:var(--text-2,#9cabbc)}
 .scoreoddstable tr.hit td{background:var(--gold-soft,rgba(120,215,207,.12))}
+/* Score picker: every scoreline with odds, tap to pick */
+.pickerscores{margin:14px 0 0;border:1px solid var(--line,#2a4152);border-radius:12px;background:var(--ink-0,#0b1822);text-align:left}
+.pickerscores summary{cursor:pointer;padding:11px 14px;font-weight:700;font-size:14px;color:var(--text,#eef5f8)}
+.pickerscores summary small{font-weight:500;color:var(--text-2,#9cabbc);margin-left:6px}
+.psgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:0 8px 4px;max-height:min(38vh,320px);overflow-y:auto;overscroll-behavior:contain;position:relative}
+.pscol{display:flex;flex-direction:column;gap:5px;min-width:0}
+.pshead{position:sticky;top:0;z-index:1;background:var(--ink-0,#0b1822);padding:4px 2px 6px;font-size:11px;font-weight:700;text-align:center;color:var(--text,#eef5f8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pshead small{display:block;font-weight:500;color:var(--text-2,#9cabbc)}
+#scorePickerDialog .pscol button{display:flex;align-items:center;justify-content:space-between;gap:4px;min-height:38px;padding:6px 8px;border:1px solid var(--line,#2a4152);border-radius:8px;background:#132635;color:var(--text,#eef5f8);font:inherit;cursor:pointer;position:relative;touch-action:manipulation}
+.pscol button b{font-size:15px;font-weight:800}
+.pscol button span{font-size:11px;color:var(--text-2,#9cabbc)}
+.pscol button i{position:absolute;top:-6px;right:-3px;font-style:normal;font-size:12px;color:var(--gold,#78d7cf)}
+#scorePickerDialog .pscol button.on{border-color:#35df7b;background:#123a2a;box-shadow:0 0 0 1px #35df7b inset}
+.pscol button.on span{color:#bff5d4}
+.psnote{margin:4px 12px 10px;font-size:11px;color:var(--text-2,#9cabbc)}
+@media(max-width:380px){#scorePickerDialog .pscol button{padding:6px 5px}.pscol button b{font-size:14px}}
+.pscol button:not(.on):hover{background:#132635}
+@media(hover:hover){.pscol button:not(.on):hover{border-color:#4e6b80;background:#18303f}}
+/* Save buttons stay in view while the score list is long */
+#scorePickerDialog .pickerfoot{position:sticky;bottom:-26px;z-index:2;margin:0 -20px -26px;padding:10px 20px 14px;background:#0e1d29;border-top:1px solid var(--line,#2a4152)}
+#scorePickerDialog .pickerfoot .pickerDone{margin-top:4px;padding:8px}
+/* Compact the +/− controls when the score list is open */
+#scorePickerDialog:has(#pickerScores[open]:not([hidden])) .scorepickermodal h2{font-size:20px;margin:2px 0 0}
+#scorePickerDialog:has(#pickerScores[open]:not([hidden])) .pickerteams{margin-top:8px}
+#scorePickerDialog:has(#pickerScores[open]:not([hidden])) .pickerteam{display:grid;grid-template-columns:44px 1fr 44px;grid-template-areas:"logo name name" "minus score plus";gap:6px 4px;align-items:center;justify-items:center}
+#scorePickerDialog:has(#pickerScores[open]:not([hidden])) .pickerteam img{grid-area:logo;width:28px;height:28px}
+#scorePickerDialog:has(#pickerScores[open]:not([hidden])) .pickerteam strong{grid-area:name;min-height:0;font-size:12px;justify-self:start;line-height:1.2}
+#scorePickerDialog:has(#pickerScores[open]:not([hidden])) .pickerteam [data-delta="1"]{grid-area:plus}
+#scorePickerDialog:has(#pickerScores[open]:not([hidden])) .pickerteam [data-delta="-1"]{grid-area:minus}
+#scorePickerDialog:has(#pickerScores[open]:not([hidden])) .pickerteam output{grid-area:score;font-size:32px;line-height:1}
+#scorePickerDialog:has(#pickerScores[open]:not([hidden])) .pickerteam button{width:44px;height:40px;font-size:22px}
+#scorePickerDialog:has(#pickerScores[open]:not([hidden])) #pickerOdds{margin-top:8px}
+#scorePickerDialog:has(#pickerScores[open]:not([hidden])) #pickerOdds .matchodds{padding:6px 0}
+#scorePickerDialog:has(#pickerScores[open]:not([hidden])) .pickerstatus{margin:6px 0 0;min-height:0;font-size:12px;text-align:center}
+#scorePickerDialog .pickerscores{margin-top:10px}

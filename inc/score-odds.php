@@ -39,7 +39,7 @@ function pcScoreLabel(string $k):string{return str_replace('-','–',$k);}
 // Before kick-off: likely scores + the player's pick chance and expected points (updated live by /assets/score-chance.js).
 function pcScoreChanceHtml(PDO $db,int $fid,?array $pick):string{
  $m=pcScoreModel($db,$fid);if(!$m)return '';
- $top=array_slice($m['probs'],0,3,true);$data=[];foreach($m['probs'] as $k=>$p)if($p>=0.002)$data[$k]=round($p,4);
+ $top=array_slice($m['probs'],0,3,true);$data=[];foreach($m['probs'] as $k=>$p)if($p>0)$data[$k]=round($p,5);
  $parts=[];foreach($top as $k=>$p)$parts[]='<b>'.pcScoreLabel($k).'</b> '.round(100*$p).'%';
  $h='<div class="scorechance" data-cs="'.htmlspecialchars(json_encode(['p'=>$data,'r'=>[round($m['results'][1],4),round($m['results'][0],4),round($m['results'][-1],4)],'best'=>$m['best']]),ENT_QUOTES).'"'.($pick!==null?' data-pick="'.(int)$pick[0].'-'.(int)$pick[1].'"':'').'><span class="cslikely">Most likely: '.implode(' · ',$parts).'</span><span class="cspick">';
  if($pick!==null)$h.=pcPickLine($m,(int)$pick[0],(int)$pick[1]);
