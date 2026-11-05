@@ -1,5 +1,5 @@
 <?php
-// Live league table fragment for the homepage / league pages: /live-table.php?league=ID&period=season|YYYY-MM
+// Live league table fragment for the homepage / league pages: /live-table.php?league=ID&period=season|YYYY-MM|gwN
 // Returns the HTML box, or nothing when no match in the period is in progress.
 declare(strict_types=1);
 require __DIR__ . '/inc/config.php';
@@ -23,5 +23,10 @@ $season = pcSeasonYear();
 $period = (string)($_GET['period'] ?? '');
 if ($period === 'season') { $start = new DateTimeImmutable($season . '-08-01 00:00:00', $uk); $end = $start->modify('+10 months'); }
 elseif (preg_match('/^(\d{4})-(\d{2})$/', $period)) { $start = new DateTimeImmutable($period . '-01 00:00:00', $uk); $end = $start->modify('+1 month'); }
+elseif (preg_match('/^gw\d{1,2}$/', $period)) {
+    require_once __DIR__ . '/inc/periods.php';
+    $p = pc_period($db, $season, $period); if (!$p) { http_response_code(400); exit; }
+    $start = $p['start']; $end = $p['end']; $fixtureSql = pc_period_fixture_sql($p, 'f');
+}
 else { http_response_code(400); exit; }
-echo pcLiveTableHtml(pcLiveTable($db, $uid, $league, $start, $end), $league, $period);
+echo pcLiveTableHtml(pcLiveTable($db, $uid, $league, $start, $end, $fixtureSql ?? ''), $league, $period);

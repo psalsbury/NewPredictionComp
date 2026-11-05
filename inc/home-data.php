@@ -73,19 +73,20 @@ require PC_ROOT.'/performance.php';
 $performance=$uid>0?personalPerformance($db,$uid,$seasonYear):null;
 $guestListed=true;
 if($uid>0&&empty($user['email'])){$q=$db->prepare('SELECT COUNT(*) FROM users u WHERE u.id=? AND '.pc_listed_sql());$q->execute([$uid]);$guestListed=(bool)$q->fetchColumn();}
-$leaderPeriods=['season'=>['Season '.substr((string)$seasonYear,2).'/'.substr((string)($seasonYear+1),2),$seasonStart,$seasonEnd]];
-for($m=0;$m<10;$m++){
- $ms=$seasonStart->modify('+'.$m.' months');$key=$ms->format('Y-m');
- $leaderPeriods[$key]=[$ms->format('M'),$ms,$ms->modify('+1 month')];
-}
+require_once PC_ROOT.'/inc/periods.php';
+$leaderPeriodList=pc_periods($db,$seasonYear);
+$leaderPeriods=[];foreach($leaderPeriodList as $k=>$pp)$leaderPeriods[$k]=[$pp['short'],$pp['start'],$pp['end']];
 $currentLeagueMonth=$ukNow->format('Y-m');
 if(!isset($leaderPeriods[$currentLeagueMonth])){
  $monthStart=$ukNow->modify('first day of this month')->setTime(0,0);
  $leaderPeriods[$currentLeagueMonth]=[$monthStart->format('M'),$monthStart,$monthStart->modify('+1 month')];
+ $leaderPeriodList[$currentLeagueMonth]=['key'=>$currentLeagueMonth,'kind'=>'month','title'=>$monthStart->format('F Y'),'short'=>$monthStart->format('M'),'start'=>$monthStart,'end'=>$monthStart->modify('+1 month'),'season'=>$seasonYear,'gw'=>null,'range'=>'','started'=>true];
 }
 $leaderPeriod=(string)($_GET['table']??$currentLeagueMonth);
-if(!isset($leaderPeriods[$leaderPeriod]))$leaderPeriod=$currentLeagueMonth;
-[$leaderTitle,$leaderStart,$leaderEnd]=$leaderPeriods[$leaderPeriod];
+if(!isset($leaderPeriodList[$leaderPeriod])||!$leaderPeriodList[$leaderPeriod]['started'])$leaderPeriod=$currentLeagueMonth;
+$leaderPeriodInfo=$leaderPeriodList[$leaderPeriod];
+$leaderTitle=$leaderPeriodInfo['title'];$leaderStart=$leaderPeriodInfo['start'];$leaderEnd=$leaderPeriodInfo['end'];
+$leaderFixtureSql=pc_period_fixture_sql($leaderPeriodInfo,'f');
 $leagues=$db->prepare("SELECT l.id,l.name,l.code,(SELECT COUNT(*) FROM league_members mc WHERE mc.league_id=l.id) member_count FROM leagues l JOIN league_members m ON m.league_id=l.id WHERE m.user_id=? ORDER BY l.created_at DESC");$leagues->execute([$uid]);$myLeagues=$leagues->fetchAll(PDO::FETCH_ASSOC);
 $selectedLeagueId=(int)($_GET['league']??0);$selectedLeague=null;
 foreach($myLeagues as $ml){if((int)$ml['id']===$selectedLeagueId){$selectedLeague=$ml;break;}}
@@ -99,7 +100,7 @@ $leaderPage=max(1,min($leaderPages,(int)($_GET['page']??1)));
 $leaderOffset=($leaderPage-1)*$leaderPageSize;
 $leaderSql="SELECT u.id,u.display_name,CASE WHEN ".pc_listed_sql()." THEN 1 ELSE 0 END listed,CAST(COALESCE(u.is_bot,0) AS INTEGER) is_bot,CAST(COALESCE(u.bot_grade,5) AS INTEGER) bot_grade,COALESCE(SUM(CASE WHEN f.id IS NOT NULL THEN p.points ELSE 0 END),0) pts
  FROM users u LEFT JOIN predictions p ON p.user_id=u.id
- LEFT JOIN fixtures f ON f.id=p.fixture_id AND julianday(f.kickoff_utc)>=julianday(:period_start) AND julianday(f.kickoff_utc)<julianday(:period_end)
+ LEFT JOIN fixtures f ON f.id=p.fixture_id AND julianday(f.kickoff_utc)>=julianday(:period_start) AND julianday(f.kickoff_utc)<julianday(:period_end)".$leaderFixtureSql."
  ".$leaderScope." GROUP BY u.id ORDER BY pts DESC,u.is_bot ASC,u.id LIMIT ".$leaderPageSize." OFFSET ".$leaderOffset;
 // Locate the current player's page using the same ordering as the table.
 $leaderFocusMe=$uid>0&&((($_GET['focus']??'')==='me')||((($_GET['screen']??'')==='leagues')&&!isset($_GET['page'])));
@@ -122,11 +123,11 @@ $leaders=$leaderStmt->fetchAll(PDO::FETCH_ASSOC);
 // Live table (matches in progress) and the "Share your week" card.
 require_once PC_ROOT.'/inc/live-table.php';
 require_once PC_ROOT.'/inc/week-card.php';
-$liveTable=pcLiveTable($db,$uid,$selectedLeagueId,$leaderStart,$leaderEnd);
+$liveTable=pcLiveTable($db,$uid,$selectedLeagueId,$leaderStart,$leaderEnd,$leaderFixtureSql);
 $weekCard=pcWeekCard($db,$uid,$user,$fixtureSeason,$selectedFixtureWeek,$myLeagues,$seasonStart,$seasonEnd);
 $friendProgress=null;
 if($selectedLeagueId){
- $friendProgress=friendLeagueProgress($db,$selectedLeagueId,$uid,$leaderStart,$leaderEnd);
+ $friendProgress=friendLeagueProgress($db,$selectedLeagueId,$uid,$leaderStart,$leaderEnd,$leaderFixtureSql);
  if($leaderFocusMe){
   foreach($friendProgress['members'] as $index=>$entry){
    if((int)$entry['id']===$uid){$leaderPage=intdiv($index,$leaderPageSize)+1;$leaderOffset=($leaderPage-1)*$leaderPageSize;break;}

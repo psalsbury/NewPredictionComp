@@ -42,7 +42,12 @@ if(isset($_GET['api'])){
   $now=new DateTimeImmutable('now',new DateTimeZone('Europe/London'));
   $year=pcSeasonYear();
   $start=new DateTimeImmutable($year.'-08-01 00:00:00',new DateTimeZone('Europe/London'));$end=$start->modify('+10 months');$title='Season '.substr((string)$year,2).'/'.substr((string)($year+1),2);
-  if($period!=='season'){
+  $periodSql='';
+  if(preg_match('/^gw\d{1,2}$/',$period)){
+   require_once PC_ROOT.'/inc/periods.php';$pp=pc_period($db,$year,$period);
+   if(!$pp){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'Invalid period']);exit;}
+   $start=$pp['start'];$end=$pp['end'];$title=$pp['title'];$periodSql=pc_period_fixture_sql($pp,'f');
+  }elseif($period!=='season'){
    if(!preg_match('/^\d{4}-\d{2}$/',$period)){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'Invalid period']);exit;}
    $month=DateTimeImmutable::createFromFormat('!Y-m',$period,new DateTimeZone('Europe/London'));
    if(!$month||$month<$start||$month>=$end){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'Invalid period']);exit;}
@@ -61,7 +66,7 @@ if(isset($_GET['api'])){
   if((int)$personInfo['is_bot']===1){$botInfo=['id'=>$playerId,'grade'=>max(1,min(5,(int)$personInfo['bot_grade'])),'title'=>(string)($personInfo['title']??''),'bio'=>(string)($personInfo['bio']??''),'avatar'=>'/bot-avatar.php?id='.$playerId];}
   $results=$db->prepare("SELECT f.round,f.kickoff_utc,f.home,f.away,f.home_score actual_home,f.away_score actual_away,p.home_score predicted_home,p.away_score predicted_away,COALESCE(p.points,0) points,p.joker
    FROM predictions p JOIN fixtures f ON f.id=p.fixture_id
-   WHERE p.user_id=:user_id AND julianday(f.kickoff_utc)>=julianday(:period_start) AND julianday(f.kickoff_utc)<julianday(:period_end) AND julianday(f.kickoff_utc)<=julianday('now') AND COALESCE(f.status,'') NOT IN ('SIM','PST','CANC','POSTPONED','CANCELLED')
+   WHERE p.user_id=:user_id AND julianday(f.kickoff_utc)>=julianday(:period_start) AND julianday(f.kickoff_utc)<julianday(:period_end) AND julianday(f.kickoff_utc)<=julianday('now') AND COALESCE(f.status,'') NOT IN ('SIM','PST','CANC','POSTPONED','CANCELLED')".$periodSql."
    ORDER BY f.kickoff_utc DESC LIMIT 100");
   $results->execute([':user_id'=>$playerId,':period_start'=>$start->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),':period_end'=>$end->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s')]);
   require_once PC_ROOT.'/inc/awards.php';
@@ -109,13 +114,18 @@ if(isset($_GET['api'])){
   if(!$leagueInfo){http_response_code(403);echo json_encode(['ok'=>false,'error'=>'You are not a member of this league']);exit;}
   $year=pcSeasonYear();
   $start=new DateTimeImmutable($year.'-08-01 00:00:00',new DateTimeZone('Europe/London'));$end=$start->modify('+10 months');$title='Season '.substr((string)$year,2).'/'.substr((string)($year+1),2);
-  if($period!=='season'){
+  $periodSql='';
+  if(preg_match('/^gw\d{1,2}$/',$period)){
+   require_once PC_ROOT.'/inc/periods.php';$pp=pc_period($db,$year,$period);
+   if(!$pp){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'Invalid period']);exit;}
+   $start=$pp['start'];$end=$pp['end'];$title=$pp['title'];$periodSql=pc_period_fixture_sql($pp,'f');
+  }elseif($period!=='season'){
    if(!preg_match('/^\d{4}-\d{2}$/',$period)){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'Invalid period']);exit;}
    $month=DateTimeImmutable::createFromFormat('!Y-m',$period,new DateTimeZone('Europe/London'));
    if(!$month||$month<$start||$month>=$end){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'Invalid period']);exit;}
    $start=$month;$end=$month->modify('+1 month');$title=$month->format('F Y');
   }
-  $progress=friendLeagueProgress($db,$leagueId,$uid,$start,$end);
+  $progress=friendLeagueProgress($db,$leagueId,$uid,$start,$end,$periodSql);
   echo json_encode(['ok'=>true,'league'=>['id'=>(int)$leagueInfo['id'],'name'=>$leagueInfo['name'],'code'=>$leagueInfo['code'],'can_manage'=>(int)$leagueInfo['owner_user_id']===$uid],'period_title'=>$title,'members'=>$progress['members'],'progress'=>$progress]);exit;
  }
  if($_GET['api']==='add_league_bot'){

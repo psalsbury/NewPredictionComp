@@ -1,0 +1,17 @@
+/* League table period picker: Season | Month | Gameweek + stepper. Used by the home/leagues tables and /league/CODE. */
+.periodpicker{display:grid;gap:10px;margin-top:14px;width:100%}
+.periodkinds{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:4px;padding:4px;border-radius:12px;background:var(--ink-0,#0c1520);border:1px solid var(--line-soft,#263949)}
+.periodpicker .periodkinds a,.periodpicker .periodkinds button{margin:0;flex-basis:auto;display:flex;align-items:center;justify-content:center;min-height:42px;padding:6px 8px;border:0;border-radius:9px;background:transparent;color:var(--text-2,#a8b3c3);font:700 14px var(--font,system-ui);text-decoration:none;cursor:pointer}
+.periodpicker .periodkinds a:hover,.periodpicker .periodkinds button:hover{background:var(--ink-2,#1b2c3b);color:var(--text,#f5f8fa)}
+.periodpicker .periodkinds a.active,.periodpicker .periodkinds button.active{background:var(--text,#f5f8fa);color:var(--ink-0,#0c1520)}
+.periodstep{display:grid;grid-template-columns:42px minmax(0,1fr) 42px;align-items:center;gap:10px;padding:10px;border:1px solid var(--line-soft,#263949);border-radius:12px;background:var(--ink-1,#142230)}
+.periodarrow{display:flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:50%;border:1px solid #4b5a70;background:#182a3b;color:var(--gold,#f4c542);font-size:30px;line-height:1;text-decoration:none;cursor:pointer;padding:0 0 3px}
+.periodarrow:hover{background:#243d52}
+.periodarrow.disabled{opacity:.28;cursor:default}
+.periodnow{min-width:0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px}
+.periodnow strong{font:700 21px/1.1 var(--display,system-ui);letter-spacing:.3px;text-transform:uppercase;color:var(--text,#f5f8fa)}
+.periodnow small{font-size:12px;color:var(--text-2,#a8b3c3)}
+.periodjump select{margin-top:4px;min-height:34px;max-width:100%;border:1px solid #496077;border-radius:8px;background:#15283a;color:#f1f5fa;padding:4px 8px;font:600 13px var(--font,system-ui);cursor:pointer}
+.periodkinds a:focus-visible,.periodkinds button:focus-visible,.periodarrow:focus-visible,.periodjump select:focus-visible{outline:2px solid var(--gold,#f4c542);outline-offset:2px}
+.friendperiodpicker{margin:13px 0 6px}
+@media(max-width:480px){.periodstep{grid-template-columns:38px minmax(0,1fr) 38px;gap:6px;padding:8px}.periodarrow{width:38px;height:38px;font-size:27px}.periodnow strong{font-size:19px}.periodpicker .periodkinds a,.periodpicker .periodkinds button{font-size:13px;min-height:40px}}

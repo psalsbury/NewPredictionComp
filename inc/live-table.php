@@ -13,11 +13,11 @@ function pcPickPoints(int $ph, int $pa, int $h, int $a, bool $joker = false): in
  * @return array|null null when nothing in this period is being played right now.
  * rows: id, name, is_bot, bot_grade, pts (confirmed), live (provisional from live matches), total, rank, was (confirmed rank), move, you
  */
-function pcLiveTable(PDO $db, int $uid, int $leagueId, DateTimeImmutable $start, DateTimeImmutable $end): ?array {
+function pcLiveTable(PDO $db, int $uid, int $leagueId, DateTimeImmutable $start, DateTimeImmutable $end, string $fixtureSql = ''): ?array {
     try {
         $q = $db->prepare("SELECT f.id, f.home, f.away, l.home_score h, l.away_score a, l.clock FROM live_scores l JOIN fixtures f ON f.id=l.fixture_id
             WHERE COALESCE(f.status,'NS') NOT IN ('FT','AET','PEN','PST','CANC','ABD','AWD','WO') AND l.updated_at>=datetime('now','-30 minutes')
-            AND julianday(f.kickoff_utc)>=julianday(?) AND julianday(f.kickoff_utc)<julianday(?)");
+            AND julianday(f.kickoff_utc)>=julianday(?) AND julianday(f.kickoff_utc)<julianday(?)" . $fixtureSql);
         $q->execute([$start->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'), $end->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s')]);
         $live = $q->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) { return null; }
@@ -28,7 +28,7 @@ function pcLiveTable(PDO $db, int $uid, int $leagueId, DateTimeImmutable $start,
     $q = $db->prepare("SELECT u.id, u.display_name, CAST(COALESCE(u.is_bot,0) AS INTEGER) is_bot, CAST(COALESCE(u.bot_grade,5) AS INTEGER) bot_grade,
         COALESCE(SUM(CASE WHEN f.id IS NOT NULL THEN p.points ELSE 0 END),0) pts
         FROM users u LEFT JOIN predictions p ON p.user_id=u.id
-        LEFT JOIN fixtures f ON f.id=p.fixture_id AND julianday(f.kickoff_utc)>=julianday(:s) AND julianday(f.kickoff_utc)<julianday(:e)
+        LEFT JOIN fixtures f ON f.id=p.fixture_id AND julianday(f.kickoff_utc)>=julianday(:s) AND julianday(f.kickoff_utc)<julianday(:e)" . $fixtureSql . "
         WHERE $scope GROUP BY u.id");
     $q->execute([':s' => $start->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'), ':e' => $end->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s')]);
     $rows = [];
