@@ -44,7 +44,7 @@ if(isset($_GET['login_token'])){
  [$local,$domain]=array_pad(explode('@',(string)$link['email'],2),2,'');$masked=strlen($local)<=2?$local:substr($local,0,2).'…';
  header('Cache-Control: no-store');header('Referrer-Policy: no-referrer');header('X-Robots-Tag: noindex');
  echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in | PredictionComp</title><meta name="robots" content="noindex">'
-  .'<link rel="stylesheet" href="/assets/home.css?v=3"><link rel="stylesheet" href="/assets/theme.css?v=20261019"><link rel="stylesheet" href="/assets/responsive.css?v=20261030">'
+  .'<link rel="stylesheet" href="/assets/home.css?v=4"><link rel="stylesheet" href="/assets/theme.css?v=20261019"><link rel="stylesheet" href="/assets/responsive.css?v=20261030">'
   .'<style>.signinconfirm{max-width:460px;margin:12vh auto 0;padding:28px 26px}.signinconfirm h1{font-size:26px;margin:0 0 10px}.signinconfirm p{line-height:1.5}.signinconfirm label{display:flex;gap:10px;align-items:flex-start;margin:16px 0;line-height:1.4}.signinconfirm input[type=checkbox]{width:20px;height:20px;flex:none;margin-top:2px}.signinconfirm .btn{width:100%;margin-top:8px}.signinconfirm .cancel{display:block;text-align:center;margin-top:14px}</style></head><body>'
   .'<main class="standalonepanel signinconfirm"><div class="sectionlabel">YOUR ACCOUNT</div><h1>Sign in to PredictionComp</h1>'
   .'<p>This link signs you in to the account for <strong>'.$e($masked.'@'.$domain).'</strong>'.($whoName!==''?' (player name <strong>'.$e($whoName).'</strong>)':'').'.</p>'

@@ -217,3 +217,4 @@ details.emailregister,details.passwordsetup{margin:18px 0}details.emailregister 
 
 /* Align desktop odds with the teams and score, excluding the time column. */
 @media(min-width:721px){#predict .fixture>.matchodds{grid-column:2/-1;grid-row:2}#predict .fixture>.matchodds .oddsprices{justify-content:center}}
+.clubselect:has(img[style*="hidden"]){grid-template-columns:1fr}.clubselect img[style*="hidden"]{display:none}.leagueactions .authmessage:empty{display:none}
