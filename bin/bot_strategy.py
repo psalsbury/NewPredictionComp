@@ -40,6 +40,22 @@ def selection_weights(grade, values):
     top = max(values)
     return normalise([prior * math.exp(beta * (value - top)) for prior,value in zip(PRIOR,values)])
 
+# SIM1 personalities (2026-11-06). Every SIM1 bot is an expert, but each one reads a match its own way
+# and always takes the pick with the highest expected points under its own view; no randomness.
+# Keyed by users.id so a rename never changes a bot's style. Other grades keep the shared model.
+PERSONAS = {
+    1:  dict(key='long',   name='The Long Game',  blurb='Two seasons of form, slow to change its mind',
+             window=730, half_life=365, last_n=None, venue=.35, market=.35, streaks=False, draws=False, style='likeliest'),
+    9:  dict(key='form',   name='The Form Guide', blurb='Only the last six games count',
+             window=120, half_life=None, last_n=6, venue=.2, market=.3, streaks=False, draws=False, style='goals', lean=0.0),
+    11: dict(key='streak', name='The Streak Chaser', blurb='Hot scorers score more; leaky defences leak more',
+             window=365, half_life=90, last_n=None, venue=.35, market=.3, streaks=True, draws=False, style='goals', lean=.15),
+    14: dict(key='market', name='The Market Reader', blurb='Trusts the bookmakers’ prices above all',
+             window=730, half_life=180, last_n=None, venue=.35, market=1.0, streaks=False, draws=False, style='likeliest'),
+    21: dict(key='venue',  name='The Home & Away Specialist', blurb='Home record at home, away record away; backs draws in tight games',
+             window=540, half_life=240, last_n=None, venue=1.0, market=.3, streaks=False, draws=True, style='likeliest'),
+}
+
 class Strategy:
     def __init__(self, matches, odds=None, now=None, score_odds=None):
         self.matches = sorted(matches, key=lambda m: when(m['kickoff']))
@@ -47,6 +63,7 @@ class Strategy:
         self.score_odds = score_odds or {}
         self.now = when(now) if now else datetime.now(timezone.utc)
         self.cache = {}
+        self.pcache = {}
 
     def expectations(self, home, away, cutoff):
         # Results need time to have finished. Matches still in progress and
@@ -112,7 +129,111 @@ class Strategy:
         self.cache[key]=(probs,values)
         return probs,values
 
+    def persona_expectations(self, cfg, home, away, cutoff):
+        """Expected goals for one SIM1 personality: its own memory length, recency and home/away weighting."""
+        done=[m for m in self.matches if when(m['kickoff'])+timedelta(hours=2)<=cutoff]
+        league=[m for m in done if when(m['kickoff'])>=cutoff-timedelta(days=730)]
+        lw=[2**(-(cutoff-when(m['kickoff'])).total_seconds()/86400/180) for m in league]
+        n=sum(lw)
+        home_base=(sum(m['hg']*w for m,w in zip(league,lw))+20*1.55)/(n+20)
+        away_base=(sum(m['ag']*w for m,w in zip(league,lw))+20*1.20)/(n+20)
+        mid=(home_base+away_base)/2
+        recent=[m for m in done if when(m['kickoff'])>=cutoff-timedelta(days=cfg['window'])]
+        def rows(club,venue=None):
+            out=[]
+            for m in recent:
+                if m['home']==club and venue in (None,'H'):out.append((m['hg'],m['ag'],m))
+                if m['away']==club and venue in (None,'A'):out.append((m['ag'],m['hg'],m))
+            out.sort(key=lambda r:when(r[2]['kickoff']))
+            return out[-cfg['last_n']:] if cfg['last_n'] else out
+        def weight(m):
+            if not cfg['half_life']:return 1.0
+            return 2**(-(cutoff-when(m['kickoff'])).total_seconds()/86400/cfg['half_life'])
+        def team(club,venue=None):
+            rs=rows(club,venue)
+            gf_base=home_base if venue=='H' else away_base if venue=='A' else mid
+            ga_base=away_base if venue=='H' else home_base if venue=='A' else mid
+            k=3 if cfg['last_n'] else (6 if venue is None else 5)
+            total=sum(weight(r[2]) for r in rs)
+            return ((sum(gf*weight(m) for gf,ga,m in rs)+k*gf_base)/(total+k)/gf_base,
+                    (sum(ga*weight(m) for gf,ga,m in rs)+k*ga_base)/(total+k)/ga_base)
+        v=cfg['venue']
+        h,a=team(home),team(away);hv,av=team(home,'H'),team(away,'A')
+        hx=home_base*((1-v)*h[0]+v*hv[0])*((1-v)*a[1]+v*av[1])
+        ax=away_base*((1-v)*a[0]+v*av[0])*((1-v)*h[1]+v*hv[1])
+        if cfg['streaks']:
+            # Last four games: scoring 2+ in three of them = hot attack, conceding 2+ in three = leaky defence,
+            # three clean sheets = locked door, failing to score in three = cold attack.
+            def last4(club):
+                rs=[r for r in rows(club) ][-4:]
+                return (sum(gf>=2 for gf,ga,m in rs)>=3, sum(ga>=2 for gf,ga,m in rs)>=3,
+                        sum(ga==0 for gf,ga,m in rs)>=3, sum(gf==0 for gf,ga,m in rs)>=3)
+            hh,ha=last4(home),last4(away)
+            hx*=(1.2 if hh[0] else 1)*(1.2 if ha[1] else 1)*(.85 if ha[2] else 1)*(.85 if hh[3] else 1)
+            ax*=(1.2 if ha[0] else 1)*(1.2 if hh[1] else 1)*(.85 if hh[2] else 1)*(.85 if ha[3] else 1)
+        return max(.25,min(3.8,hx)),max(.25,min(3.8,ax))
+
+    def persona_forecast(self, cfg, external, home, away, kickoff=None):
+        cutoff=min(self.now,when(kickoff)) if kickoff else self.now
+        key=(cfg['key'],external,home,away,cutoff.isoformat())
+        if key in self.pcache:return self.pcache[key][:2]
+        hx,ax=self.persona_expectations(cfg,home,away,cutoff)
+        probs=poisson_grid(hx,ax)
+        trust=cfg['market']
+        price=self.odds.get(external)
+        if price and trust:
+            observed,fetched=when(price['observed_at']),when(price['fetched_at'])
+            prices=[float(price[k]) for k in ['away','draw','home']]
+            if all(math.isfinite(v) and v>1 for v in prices) and observed<=cutoff and fetched<=cutoff:
+                age=(cutoff-observed).total_seconds()/86400
+                blend=(.9 if age<=3 else .5 if age<=7 else 0)*trust
+                market=normalise([1/v for v in prices])
+                masses=[sum(p for (h,a),p in zip(SCORES,probs) if result(h,a)==r) for r in [-1,0,1]]
+                desired=[blend*m+(1-blend)*p for m,p in zip(market,masses)]
+                probs=normalise([p*desired[result(h,a)+1]/masses[result(h,a)+1] for (h,a),p in zip(SCORES,probs)])
+        market=self.score_odds.get(external)
+        if market and trust:
+            observed,fetched=when(market['observed_at']),when(market['fetched_at'])
+            if observed<=cutoff and fetched<=cutoff:
+                age=(cutoff-observed).total_seconds()/86400
+                blend=(.95 if age<=3 else .7 if age<=7 else 0)*trust
+                inv={k:1/v for k,v in market['prices'].items() if v>1}
+                total=sum(inv.values())
+                if blend and total:
+                    grid=[inv.get((h,a),0)/total for h,a in SCORES]
+                    if sum(grid)>0:
+                        grid=normalise(grid)
+                        probs=normalise([blend*g+(1-blend)*p for g,p in zip(grid,probs)])
+        values=utilities(probs)
+        if cfg['draws']:
+            res={r:sum(p for (h,a),p in zip(SCORES,probs) if result(h,a)==r) for r in [-1,0,1]}
+            if res[0]>=.27 and abs(res[1]-res[-1])<=.10:
+                # Tight game: the specialist always backs the likeliest draw.
+                best=max((p,i) for i,((h,a),p) in enumerate(zip(SCORES,probs)) if h==a)[1]
+                values=list(values);values[best]=max(values)+.01
+        self.pcache[key]=(probs,values,hx,ax)
+        return probs,values
+
+    def persona_pick(self, cfg, external, home, away, kickoff=None):
+        """Result first (the outcome worth most to this persona), then the scoreline in its own style:
+        'likeliest' = most probable score for that result; 'goals' = the score nearest its expected goals
+        (lean > 0 rounds up, so a goal-hungry read predicts more goals)."""
+        probs,values=self.persona_forecast(cfg,external,home,away,kickoff)
+        cutoff=min(self.now,when(kickoff)) if kickoff else self.now
+        hx,ax=self.pcache[(cfg['key'],external,home,away,cutoff.isoformat())][2:]
+        best=max(range(len(SCORES)),key=lambda i:values[i])
+        want=result(*SCORES[best])
+        if cfg['style']=='goals':
+            tx,ty=hx+cfg['lean'],ax+cfg['lean']
+            if want==0:tx=ty=(tx+ty)/2
+            options=[(h,a) for h,a in SCORES if result(h,a)==want]
+            return min(options,key=lambda s:(abs(s[0]-tx)+abs(s[1]-ty),-probs[SCORES.index(s)]))
+        return SCORES[best]
+
     def predict(self, grade, uid, external, home, away, kickoff=None):
+        cfg=PERSONAS.get(int(uid)) if int(grade)==1 else None
+        if cfg:return self.persona_pick(cfg,external,home,away,kickoff)
+
         # Level 5 never reads club form or prices: plausible, independent random
         # scores, concentrated on normal football scores instead of 0..5 uniform.
         values=[0.0]*len(SCORES) if grade==5 else self.forecast(external,home,away,kickoff)[1]
@@ -120,7 +241,11 @@ class Strategy:
         rng=random.Random(f'{VERSION}:{uid}:{external}:{grade}')
         return rng.choices(SCORES,weights=weights,k=1)[0]
 
-    def alternatives(self, grade, external, home, away, kickoff=None):
+    def alternatives(self, grade, external, home, away, kickoff=None, uid=None):
+        cfg=PERSONAS.get(int(uid)) if uid is not None and int(grade)==1 else None
+        if cfg:
+            values=self.persona_forecast(cfg,external,home,away,kickoff)[1]
+            return sorted(zip(SCORES,selection_weights(1,values)),key=lambda p:-p[1])
         values=[0.0]*len(SCORES) if grade==5 else self.forecast(external,home,away,kickoff)[1]
         weights=selection_weights(grade,values)
         return sorted(zip(SCORES,weights),key=lambda p:-p[1])

@@ -113,7 +113,7 @@ def generate_gameweek_predictions(db, bots, prediction, refresh=False, alternati
             slate = [existing.get((uid, f[0])) if not f[6] else
                      (prediction(grade, uid, f[1], f[4], f[5], supported) if refresh or (uid,f[0]) not in existing else existing[(uid,f[0])])
                      for f in fixtures]
-            options = [alternatives(grade,f[1],f[4],f[5]) if f[6] else [] for f in fixtures] if alternatives else None
+            options = [alternatives(grade,f[1],f[4],f[5],uid) if f[6] else [] for f in fixtures] if alternatives else None
             slate = unique_gameweek(slate, used, uid, [bool(f[6]) for f in fixtures], options)
             for f, score in zip(fixtures, slate):
                 if not f[6]:

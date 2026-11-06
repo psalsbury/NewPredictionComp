@@ -9,7 +9,7 @@ import json
 import os
 import sqlite3
 import hashlib
-from bot_strategy import from_database, selection_weights, VERSION, when, SCORES, result
+from bot_strategy import from_database, selection_weights, VERSION, when, SCORES, result, PERSONAS
 from bot_history import load_archive
 from club_catalog import load_catalog, canonical, season_year
 from gameweeks import refresh_gameweeks, generate_gameweek_predictions
@@ -39,7 +39,8 @@ def assign_bot_jokers(db, model, name):
             choice=open_picks[seed%len(open_picks)][4]
         else:
             def ev(r):
-                probs=model.forecast(r[5],name(r[7]),name(r[8]),r[6])[0]
+                cfg=PERSONAS.get(uid) if grade==1 else None
+                probs=(model.persona_forecast(cfg,r[5],name(r[7]),name(r[8]),r[6]) if cfg else model.forecast(r[5],name(r[7]),name(r[8]),r[6]))[0]
                 res={-1:0.0,0:0.0,1:0.0};exact=0.0
                 for (h,a),p in zip(SCORES,probs):
                     res[result(h,a)]+=p
@@ -67,8 +68,8 @@ def refresh(db, archive_fetch=True, gameweek_refresh=True):
     fixtures={external:(kick,name(h),name(a)) for external,kick,h,a in db.execute('SELECT external_id,kickoff_utc,home,away FROM fixtures')}
     def pick(grade,uid,external,home,away,supported):
         return model.predict(grade,uid,external,name(home),name(away),fixtures[external][0])
-    def alternatives(grade,external,home,away):
-        return model.alternatives(grade,external,name(home),name(away),fixtures[external][0])
+    def alternatives(grade,external,home,away,uid=None):
+        return model.alternatives(grade,external,name(home),name(away),fixtures[external][0],uid)
     written,weeks=generate_gameweek_predictions(db,bots,pick,refresh=True,alternatives=alternatives)
     jokers=assign_bot_jokers(db,model,name)
     totals={g:[] for g in range(1,6)}
