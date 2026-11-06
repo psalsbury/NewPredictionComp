@@ -76,7 +76,7 @@ function renderSim1Challenge(PDO $db,array $rows,string $label,bool $ongoing):st
  if($d['players']){
   $h.='<section class="panel s1card"><h2>Players v SIM1</h2><p class="note">Each player against the average SIM1 bot on the same matches they predicted, so skipping a match never counts against you.</p><div class="s1wrap"><table class="s1table"><thead><tr><th class="l">Player</th><th>Played</th><th>Pts</th><th>SIM1 avg</th><th>+/−</th><th>Best SIM1</th></tr></thead><tbody>';
   foreach($d['players'] as $p){$cls=$p['diff']>1e-9?'up':($p['diff']<-1e-9?'down':'');
-   $h.='<tr'.($cls==='up'?' class="beat"':'').'><td class="l">'.$e($p['name']).($cls==='up'?' <span class="s1badge">Beating SIM1</span>':'').'</td><td>'.$p['picks'].'</td><td><b>'.$p['points'].'</b></td><td>'.number_format($p['sim'],1).'</td><td class="'.$cls.'">'.($p['diff']>0.05?'+':'').number_format($p['diff'],1).'</td><td><b>'.(int)$p['best'].'</b> <small class="s1bot">'.$e($p['bestName']).'</small></td></tr>';}
+   $h.='<tr'.($cls==='up'?' class="beat"':'').'><td class="l">'.$e($p['name']).($cls==='up'?' <span class="s1badge">Beating SIM1</span>':'').'</td><td>'.$p['picks'].'</td><td><b>'.$p['points'].'</b></td><td>'.number_format($p['sim'],1).'</td><td class="'.$cls.'">'.($p['diff']>0.05?'+':'').number_format($p['diff'],1).'</td><td><b>'.(int)$p['best'].'</b></td></tr>';}
   $h.='</tbody></table></div><p class="note">'.count($beaters).' of '.count($d['players']).' player'.(count($d['players'])===1?'':'s').' '.($ongoing?'are':'were').' ahead of SIM1. SIM1 avg is the average of the five SIM1 bots; Best SIM1 is the top-scoring single bot on the same matches. New guests appear once they qualify for the global table.</p></section>';
  }
  $h.='<div class="s1grid">';
