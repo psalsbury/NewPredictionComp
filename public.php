@@ -112,7 +112,7 @@ function fixtureRows($rows){
   if($day!==$kick->format('Y-m-d')){
    if($day!==null)echo '</div></details>';
    $day=$kick->format('Y-m-d');
-   echo '<details class="matchday datefold" open><summary class="matchday-heading"><time datetime="'.e($day).'">'.e($kick->format('l j M Y')).'</time><span class="foldhint">Hide matches</span></summary><div class="matchday-games">';
+   echo '<details class="matchday datefold" open><summary class="matchday-heading"><time datetime="'.e($day).'">'.e($kick->format('l j M Y')).'</time></summary><div class="matchday-games">';
   }
   $done=in_array($f['status'],['FT','AET','PEN'],true)&&$f['home_score']!==null&&$f['away_score']!==null;
   $status=fixtureStatusLabel($f);
@@ -158,9 +158,6 @@ body>main a.matchrow:hover,body>main a.matchrow:focus-visible{background:var(--i
 .datefold>summary:before{content:"▾";display:inline-block;font-size:18px}
 .datefold:not([open])>summary:before{content:"▸"}
 .datefold>summary:focus-visible{outline:2px solid var(--gold,#77eaa5);outline-offset:-2px}
-.datefold>summary .foldhint{margin-left:auto;font:500 12px system-ui;opacity:.75}
-.datefold:not([open])>summary .foldhint{font-size:0}
-.datefold:not([open])>summary .foldhint:after{content:"Show matches";font:500 12px system-ui}
 .predictionday>.fixtureday{margin:0;padding:14px 16px}
 </style><link rel="stylesheet" href="/assets/odds.css?v=10"><link rel="stylesheet" href="/assets/responsive.css?v=20261030"><link rel="stylesheet" href="/assets/mobile.css?v=2"><link rel="stylesheet" href="/assets/period-picker.css?v=2"></head><body><header class="siteheader"><?php siteHeaderNavigation();?></header><main><p class="note"><a href="/">PredictionComp</a> / <?=e($title)?></p><h1 class="<?=in_array($kind,['fixtures','results'],true)?'fixtures-title':''?>"><?=$kind==='fixtures'?'Fixtures':($kind==='results'?'Results':e($title))?></h1><?php if($kind!=='missing'&&$kind!=='sim1')echo dataFreshnessHtml($db);?>
 <?php if($kind==='clubs'):?><p>Follow a club’s upcoming matches, check its recent results and test your score predictions against five levels of bot opponents. Choose your club below.</p><div class="grid"><?php foreach($teams as $t):?><a class="club" href="/clubs/<?=e(slug($t))?>"><img src="/club-logo.php?team=<?=urlencode($t)?>" alt="" width="34" height="34" loading="lazy"><?=e($t)?></a><?php endforeach;?></div>

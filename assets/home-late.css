@@ -3,9 +3,6 @@
 .datefold>summary:before{content:"▾";display:inline-block;font-size:18px}
 .datefold:not([open])>summary:before{content:"▸"}
 .datefold>summary:focus-visible{outline:2px solid var(--gold,#77eaa5);outline-offset:-2px}
-.datefold>summary .foldhint{margin-left:auto;font:500 12px system-ui;opacity:.75}
-.datefold:not([open])>summary .foldhint{font-size:0}
-.datefold:not([open])>summary .foldhint:after{content:"Show matches";font:500 12px system-ui}
 .predictionday>.fixtureday{margin:0;padding:14px 16px}
 /* Visitors: the next three open matches, then "Show all". */
 .fewfixtures .fixture.extra{display:none}
