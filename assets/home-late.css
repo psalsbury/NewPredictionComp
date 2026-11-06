@@ -95,7 +95,7 @@ body>.footer p{max-width:900px;margin:8px auto}
 .homeleagueactions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch;margin-top:16px}.homeleagueactions .copybtn,.homeleagueactions .leagueviewbtn{display:flex;align-items:center;justify-content:center;min-height:44px;padding:9px 12px;margin:0;border:1px solid #40596a;border-radius:8px;background:#172b3a;color:#eef5f8;text-align:center;text-decoration:none;font:600 14px var(--font,system-ui);white-space:normal}.homeleagueactions .leagueviewbtn{border-color:#b39136;background:rgba(244,197,66,.09);color:#f4c542}.homeleagueactions>a.copybtn{grid-column:1/-1;justify-self:start;border:0;background:none;padding:2px 0;min-height:28px;color:#a8b3c3;font-size:13px}.homeleagueactions>button:hover{border-color:#f4c542}
 
 /* Keep grid tracks and named areas in step across tablet breakpoints. */
-#predict .fixture{grid-template-areas:"date home score away" "odds odds odds odds"}
+#predict .fixture{grid-template-areas:"date home score away" ". odds odds odds"}
 #predict .fixture>.date{grid-area:date}
 #predict .fixture>.home{grid-area:home}
 #predict .fixture>.score{grid-area:score;min-width:0}
