@@ -60,17 +60,31 @@ require PC_ROOT.'/player-nav.php';
 require_once PC_ROOT.'/data-status.php';
 require PC_ROOT.'/matchweek.php';
 $matchweek=matchweekSummary($db,$pred,time(),['fixtures'=>$fixtures,'label'=>'Matchweek '.$selectedFixtureWeek.' · '.$fixtureSeason.'/'.substr((string)($fixtureSeason+1),2)]);
+// My results screen: one Season / Month / Gameweek period drives all three tabs (?period=season|YYYY-MM|gwN).
+$resultsPeriod=null;$historyScope='';$historyParams=[$uid];
+if(($_GET['screen']??'')==='results'&&$uid>0){
+ require_once PC_ROOT.'/inc/periods.php';
+ $rpKey=is_string($_GET['period']??null)?$_GET['period']:'';
+ // Old £1-a-match links used odds_period=season:Y / month:Y-m / week:Y:N.
+ if($rpKey===''&&is_string($_GET['odds_period']??null)){$o=$_GET['odds_period'];$rpKey=preg_match('/^month:(\d{4}-\d{2})$/',$o,$m)?$m[1]:(preg_match('/^week:\d{4}:(\d+)$/',$o,$m)?'gw'.$m[1]:'season');}
+ $resultsPeriod=pc_period($db,pcSeasonYear(),$rpKey);
+ if(!$resultsPeriod||!$resultsPeriod['started'])$resultsPeriod=pc_period($db,pcSeasonYear(),'season');
+ $utc=fn($d)=>$d->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
+ $resultsPeriod['start_utc']=$utc($resultsPeriod['start']);$resultsPeriod['end_utc']=$utc($resultsPeriod['end']);
+ $historyScope=" AND julianday(f.kickoff_utc)>=julianday(?) AND julianday(f.kickoff_utc)<julianday(?)".pc_period_fixture_sql($resultsPeriod,'f');
+ $historyParams=[$uid,$resultsPeriod['start_utc'],$resultsPeriod['end_utc']];
+}
 $historyStmt=$db->prepare("SELECT f.id fixture_id,f.round,f.kickoff_utc,f.home,f.away,f.home_score actual_home,f.away_score actual_away,f.status,p.home_score predicted_home,p.away_score predicted_away,COALESCE(p.points,0) points,p.joker
  FROM predictions p JOIN fixtures f ON f.id=p.fixture_id
- WHERE p.user_id=? AND julianday(f.kickoff_utc)<=julianday('now') AND COALESCE(f.status,'')<>'SIM'
- ORDER BY f.kickoff_utc DESC LIMIT 100");
-$historyStmt->execute([$uid]);$predictionHistory=$historyStmt->fetchAll(PDO::FETCH_ASSOC);
+ WHERE p.user_id=? AND julianday(f.kickoff_utc)<=julianday('now') AND COALESCE(f.status,'')<>'SIM'$historyScope
+ ORDER BY f.kickoff_utc DESC LIMIT ".($resultsPeriod?400:100));
+$historyStmt->execute($historyParams);$predictionHistory=$historyStmt->fetchAll(PDO::FETCH_ASSOC);
 $ukNow=new DateTimeImmutable('now',new DateTimeZone('Europe/London'));
 $seasonYear=pcSeasonYear();
 $seasonStart=new DateTimeImmutable($seasonYear.'-08-01 00:00:00',new DateTimeZone('Europe/London'));
 $seasonEnd=$seasonStart->modify('+10 months');
 require PC_ROOT.'/performance.php';
-$performance=$uid>0?personalPerformance($db,$uid,$seasonYear):null;
+$performance=$uid>0?personalPerformance($db,$uid,$seasonYear,$resultsPeriod):null;
 $guestListed=true;
 if($uid>0&&empty($user['email'])){$q=$db->prepare('SELECT COUNT(*) FROM users u WHERE u.id=? AND '.pc_listed_sql());$q->execute([$uid]);$guestListed=(bool)$q->fetchColumn();}
 require_once PC_ROOT.'/inc/periods.php';

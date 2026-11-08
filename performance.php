@@ -2,11 +2,13 @@
 function predictionPoints(int $h,int $a,int $actualH,int $actualA):int{
  return pc_points($h,$a,$actualH,$actualA);
 }
-function personalPerformance(PDO $db,int $uid,int $year):array{
- $start=$year.'-07-01T00:00:00Z';$end=($year+1).'-07-01T00:00:00Z';
- $q=$db->prepare("SELECT f.id,f.kickoff_utc,f.home_score actual_home,f.away_score actual_away,p.home_score,p.away_score FROM predictions p JOIN fixtures f ON f.id=p.fixture_id WHERE p.user_id=? AND f.status='FT' AND f.home_score IS NOT NULL AND f.away_score IS NOT NULL AND julianday(f.kickoff_utc)>=julianday(?) AND julianday(f.kickoff_utc)<julianday(?) AND julianday(f.kickoff_utc)<=julianday('now') ORDER BY julianday(f.kickoff_utc)");
+function personalPerformance(PDO $db,int $uid,int $year,?array $period=null):array{
+ // $period: a pc_periods() entry with start_utc/end_utc (the My results period picker); null = the whole season.
+ $start=$period['start_utc']??$year.'-07-01T00:00:00Z';$end=$period['end_utc']??($year+1).'-07-01T00:00:00Z';
+ $scope=$period&&function_exists('pc_period_fixture_sql')?pc_period_fixture_sql($period,'f'):'';
+ $q=$db->prepare("SELECT f.id,f.kickoff_utc,f.home_score actual_home,f.away_score actual_away,p.home_score,p.away_score FROM predictions p JOIN fixtures f ON f.id=p.fixture_id WHERE p.user_id=? AND f.status='FT' AND f.home_score IS NOT NULL AND f.away_score IS NOT NULL AND julianday(f.kickoff_utc)>=julianday(?) AND julianday(f.kickoff_utc)<julianday(?) AND julianday(f.kickoff_utc)<=julianday('now')$scope ORDER BY julianday(f.kickoff_utc)");
  $q->execute([$uid,$start,$end]);$rows=$q->fetchAll(PDO::FETCH_ASSOC);
- $q=$db->prepare("SELECT p.fixture_id,p.home_score,p.away_score FROM predictions p JOIN users u ON u.id=p.user_id JOIN fixtures f ON f.id=p.fixture_id WHERE u.is_bot=1 AND u.bot_grade=1 AND u.id<>? AND f.status='FT' AND f.home_score IS NOT NULL AND f.away_score IS NOT NULL AND julianday(f.kickoff_utc)>=julianday(?) AND julianday(f.kickoff_utc)<julianday(?) AND julianday(f.kickoff_utc)<=julianday('now')");
+ $q=$db->prepare("SELECT p.fixture_id,p.home_score,p.away_score FROM predictions p JOIN users u ON u.id=p.user_id JOIN fixtures f ON f.id=p.fixture_id WHERE u.is_bot=1 AND u.bot_grade=1 AND u.id<>? AND f.status='FT' AND f.home_score IS NOT NULL AND f.away_score IS NOT NULL AND julianday(f.kickoff_utc)>=julianday(?) AND julianday(f.kickoff_utc)<julianday(?) AND julianday(f.kickoff_utc)<=julianday('now')$scope");
  $q->execute([$uid,$start,$end]);$bots=[];foreach($q as $b)$bots[(int)$b['fixture_id']][]=$b;
  $stats=['played'=>0,'points'=>0,'exact'=>0,'resultOnly'=>0,'correct'=>0,'accuracy'=>0,'monthly'=>[],'sim'=>['compared'=>0,'wins'=>0,'ties'=>0,'losses'=>0]];
  foreach($rows as $r){
@@ -22,9 +24,9 @@ function personalPerformance(PDO $db,int $uid,int $year):array{
  }}
  $stats['accuracy']=$stats['played']?round(100*$stats['correct']/$stats['played']):0;return $stats;
 }
-function renderPersonalPerformance(array $s):void{
- echo '<div class="performanceintro">Your season so far · Completed matches you predicted</div>';
- if(!$s['played']){echo '<div class="emptyhistory">Your performance will appear after your first predicted match finishes.</div>';return;}
+function renderPersonalPerformance(array $s,?string $label=null):void{
+ echo '<div class="performanceintro">'.htmlspecialchars($label??'Your season so far').' · Completed matches you predicted</div>';
+ if(!$s['played']){echo '<div class="emptyhistory">'.($label===null?'Your performance will appear after your first predicted match finishes.':'No finished matches you predicted in this period yet. Pick another period above.').'</div>';return;}
  echo '<div class="performancegrid">';
  foreach([[$s['points'],'Points'],[$s['exact'].' / '.$s['played'],'Exact scores'],[$s['correct'].' / '.$s['played'],'Correct results'],[$s['accuracy'].'%','Result accuracy']] as [$value,$label])echo '<div><strong>'.htmlspecialchars((string)$value).'</strong><span>'.$label.'</span></div>';
  echo '</div><p class="performancenote">Correct results include exact scores. '.$s['resultOnly'].' earned 3 points for the result without the exact score.</p>';
