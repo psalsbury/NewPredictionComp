@@ -108,3 +108,51 @@ function pc_period_picker_html(PDO $db, int $seasonYear, string $currentKey, cal
     }
     return $h . '</div>';
 }
+
+/**
+ * Compact period bar for /my-results: Season | Month | Gameweek, then one fixed-height row
+ * ‹ [title ▾ / sub-line] › that looks the same for every kind (Season keeps the row with its arrows off),
+ * so the page doesn't change height when you switch. The title doubles as the month/gameweek dropdown.
+ * Links carry data-period so assets/results-period.js can swap the results in without a full reload.
+ */
+function pc_period_bar_html(PDO $db, int $seasonYear, string $currentKey, callable $href): string {
+    $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
+    $periods = pc_periods($db, $seasonYear);
+    $cur = $periods[$currentKey] ?? $periods['season'];
+    $months = pc_periods_of($db, $seasonYear, 'month');
+    $gws = pc_periods_of($db, $seasonYear, 'gameweek');
+    $nowMonth = (new DateTimeImmutable('now', new DateTimeZone('Europe/London')))->format('Y-m');
+    $monthDefault = isset($periods[$nowMonth]) && $periods[$nowMonth]['started'] ? $nowMonth : ($months ? end($months)['key'] : 'season');
+    $gwDefault = $gws ? end($gws)['key'] : null;
+    $tabs = [['season', 'Season', 'season'], ['month', 'Month', $cur['kind'] === 'month' ? $cur['key'] : $monthDefault]];
+    if ($gwDefault) $tabs[] = ['gameweek', 'Gameweek', $cur['kind'] === 'gameweek' ? $cur['key'] : $gwDefault];
+    $h = '<div class="periodbar" data-kind="' . $e($cur['kind']) . '"><nav class="periodbarkinds" aria-label="Show results by">';
+    foreach ($tabs as [$kind, $text, $key]) {
+        $on = $cur['kind'] === $kind;
+        $h .= '<a href="' . $e($href($key)) . '" data-period="' . $e($key) . '"' . ($on ? ' class="active" aria-current="true"' : '') . '>' . $text . '</a>';
+    }
+    $h .= '</nav>';
+    $list = $cur['kind'] === 'month' ? $months : ($cur['kind'] === 'gameweek' ? $gws : []);
+    $keys = array_column($list, 'key');
+    $i = array_search($cur['key'], $keys, true);
+    $prev = ($i !== false && $i > 0) ? $list[$i - 1] : null;
+    $next = ($i !== false && $i < count($list) - 1) ? $list[$i + 1] : null;
+    $unit = $cur['kind'] === 'month' ? 'month' : 'gameweek';
+    $arrow = fn($p, $sym, $dir) => $p
+        ? '<a class="periodbararrow" href="' . $e($href($p['key'])) . '" data-period="' . $e($p['key']) . '" aria-label="' . $dir . ' ' . $unit . ': ' . $e($p['title']) . '">' . $sym . '</a>'
+        : '<span class="periodbararrow disabled" aria-hidden="true">' . $sym . '</span>';
+    if ($cur['kind'] === 'season') $sub = 'Every match so far';
+    elseif ($cur['kind'] === 'month') $sub = $cur['start']->format('j M') . ' – ' . $cur['end']->modify('-1 day')->format('j M') . ($cur['key'] === $monthDefault ? ' · This month' : '');
+    else $sub = $cur['range'] . ($cur['key'] === $gwDefault ? ' · Latest' : '');
+    $h .= '<div class="periodbarstep">' . $arrow($prev, '‹', 'Previous') . '<div class="periodbarnow">';
+    if ($list) {
+        $h .= '<label class="periodbarpick"><span class="periodbartitle">' . $e($cur['title']) . '<i aria-hidden="true">▾</i></span>'
+            . '<select aria-label="Choose ' . $unit . '">';
+        foreach (array_reverse($list) as $p) $h .= '<option value="' . $e($href($p['key'])) . '" data-period="' . $e($p['key']) . '"' . ($p['key'] === $cur['key'] ? ' selected' : '') . '>' . $e($cur['kind'] === 'month' ? $p['title'] : $p['title'] . ($p['range'] ? ' · ' . $p['range'] : '')) . '</option>';
+        $h .= '</select></label>';
+    } else {
+        $h .= '<span class="periodbartitle">' . $e($cur['title']) . '</span>';
+    }
+    $h .= '<small>' . $e($sub) . '</small></div>' . $arrow($next, '›', 'Next') . '</div>';
+    return $h . '</div>';
+}

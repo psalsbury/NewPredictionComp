@@ -22,14 +22,6 @@ if(in_array($view,['results','leagues'],true))$css.='<style>
 .playerpagetitle{font-size:32px;line-height:1.2;letter-spacing:-.7px;margin:0 0 12px;font-weight:850}
 .standalonepanel .explain{max-width:640px;line-height:1.6}
 .standalonepanel .resulttabs{margin-top:20px;padding-bottom:14px}
-.resultsperiod{margin:18px 0 4px;padding:14px;border:1px solid #263b49;border-radius:14px;background:#0e1d29}
-.resultsperiodhead{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px}
-.resultsperiodhead span{font-weight:800;font-size:15px}
-.resultsperiodhead small{color:#9fb3c0;font-size:12px}
-.resultsperiod .periodpicker{margin-top:10px}
-.resultsperiodnow{margin:10px 0 0;font-size:13px;color:#b6c7d1;text-align:center}
-.resultsperiodnow strong{color:#eef5f8}
-@media(max-width:480px){.resultsperiod{padding:10px;margin-top:14px}.standalonepanel .resulttabs button{flex:1 1 0;padding:8px 6px}}
 .standalonepanel .performancebody{padding-top:22px}
 .standalonepanel .myleagues{margin:28px 0}
 .standalonepanel .myleagues h3{font-size:17px;margin-bottom:14px}
@@ -47,15 +39,16 @@ if($view==='leagues'&&($selectedLeagueId||isset($_GET['global']))){
 $html=str_replace('</head>',$css.'</head>',$html);
 if($view==='results'&&$uid>0){
  require_once __DIR__.'/inc/results-odds.php';require_once __DIR__.'/inc/awards.php';
- $html=str_replace('<div class="historylist" id="matchesPanel"',pcAwardsHtml(pcAwardsFor($db,$uid),'Your awards','No awards yet. Win a gameweek, land a hat-trick of exact scores or hit the jackpot with your joker.').'<div class="historylist" id="matchesPanel"',$html);
+ $html=preg_replace('/(<div class="historylist" id="matchesPanel"[^>]*>)/','$1'.str_replace(['\\','$'],['\\\\','\\$'],pcAwardsHtml(pcAwardsFor($db,$uid),'Your awards','No awards yet. Win a gameweek, land a hat-trick of exact scores or hit the jackpot with your joker.')),$html,1);
  $oddsTab='<button type="button" id="oddsTab" role="tab" aria-controls="oddsPanel" aria-selected="false" tabindex="-1" onclick="showResultsTab(\'odds\')">£1 a match</button>';
  $html=preg_replace_callback('/(<button\b[^>]*id="performanceTab"[^>]*>.*?<\/button>)/s',fn($m)=>$m[1].$oddsTab,$html,1);
  // One period (Season / Month / Gameweek) for all three tabs; $resultsPeriod comes from inc/home-data.php.
  $rp=$resultsPeriod;$resultsTab=in_array($_GET['tab']??'',['performance','odds'],true)?$_GET['tab']:'matches';
  $rpHref=function(string $k)use($resultsTab){$q=[];if($k!=='season')$q['period']=$k;if($resultsTab!=='matches')$q['tab']=$resultsTab;return '/my-results'.($q?'?'.http_build_query($q):'');};
- $rpSub=$rp['kind']==='gameweek'?$rp['range']:($rp['kind']==='month'?'Matches kicking off in '.$rp['title']:'Every match so far this season');
- $picker='<section id="resultsPeriod" class="resultsperiod" aria-label="Results period"><div class="resultsperiodhead"><span>Show results for</span><small>Applies to every tab below</small></div>'.pc_period_picker_html($db,$seasonYear,$rp['key'],$rpHref,'results period').'<p class="resultsperiodnow">Showing <strong>'.htmlspecialchars($rp['title']).'</strong>'.($rpSub!==''?' · '.htmlspecialchars($rpSub):'').'</p></section>';
- $html=preg_replace('/<div class="resulttabs"/',str_replace(['\\','$'],['\\\\','\\$'],$picker).'<div class="resulttabs"',$html,1);
+ // Compact period bar under the tabs; assets/results-period.js swaps the results in place (no reload, no jump).
+ $picker='<section id="resultsPeriod" class="resultsperiod" aria-label="Results period">'.pc_period_bar_html($db,$seasonYear,$rp['key'],$rpHref).'</section>';
+ $html=str_replace('<section id="performancePanel"',$picker.'<section id="performancePanel"',$html);
+ $html=str_replace('</head>','<link rel="stylesheet" href="/assets/results-period.css?v=1"></head>',$html);
  $oddsPeriod=['start'=>$rp['start_utc'],'end'=>$rp['end_utc']]+($rp['kind']==='gameweek'?['season'=>(int)$rp['season'],'week'=>(int)$rp['gw']]:[]);
  $oddsPanel='<section id="oddsPanel" class="performancebody" role="tabpanel" aria-labelledby="oddsTab" hidden>'.renderPersonalOddsResults(personalOddsResults($db,$uid,$seasonYear,$oddsPeriod),$rp['title']).'</section>';
  $html=str_replace('<section id="performancePanel"',$oddsPanel.'<section id="performancePanel"',$html);
@@ -67,5 +60,6 @@ if($target==='leaguesDialog')$script.='function closeLeagues(){}function openLea
 $script.='document.querySelectorAll(".playernav a").forEach(a=>a.removeAttribute("onclick"));';
 if($view==='leagues'&&($selectedLeagueId||isset($_GET['global'])))$script.='document.querySelectorAll("#leader button.leagueviewbtn").forEach(b=>{b.textContent="Manage league"});';
 $script.='</script>';
+if($view==='results'&&$uid>0)$script.='<script src="/assets/results-period.js?v=1" defer></script>';
 $html=str_replace('</body>',$script.'</body>',$html);
 echo $html;
