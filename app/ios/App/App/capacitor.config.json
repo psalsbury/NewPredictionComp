@@ -1,0 +1,30 @@
+{
+	"appId": "uk.salsbury.predictioncomp",
+	"appName": "PredictionComp",
+	"webDir": "www",
+	"backgroundColor": "#071522",
+	"server": {
+		"url": "https://predictioncomp.com",
+		"errorPath": "offline.html"
+	},
+	"ios": {
+		"contentInset": "always",
+		"appendUserAgent": "PredictionCompApp/1.0"
+	},
+	"plugins": {
+		"SocialLogin": {
+			"providers": {
+				"google": true,
+				"apple": true,
+				"facebook": false,
+				"twitter": false
+			}
+		},
+		"LocalNotifications": {}
+	},
+	"packageClassList": [
+		"AppPlugin",
+		"LocalNotificationsPlugin",
+		"SocialLoginPlugin"
+	]
+}

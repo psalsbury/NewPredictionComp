@@ -5,6 +5,7 @@ if(isset($_GET['api'])){
  header('Content-Type: application/json');$in=json_decode(file_get_contents('php://input'),true)?:[];
  pc_password_api($db,$user,$uid,(string)$_GET['api'],$in);
  pc_guest_api($db,$uid,(string)$t,(string)$_GET['api'],$in);
+ require_once PC_ROOT.'/inc/app.php';pc_app_api($db,$user,$uid,(string)$_GET['api'],$in); // iPhone app + delete account
  if($_GET['api']==='onboarding_done'){
   if($uid<1||$_SERVER['REQUEST_METHOD']!=='POST'||!hash_equals((string)$_SESSION['registration_csrf'],(string)($in['csrf']??''))){http_response_code(403);echo json_encode(['ok'=>false,'error'=>'Please refresh and try again.']);exit;}
   $db->prepare('UPDATE users SET onboarding_seen=1 WHERE id=?')->execute([$uid]);echo json_encode(['ok'=>true]);exit;

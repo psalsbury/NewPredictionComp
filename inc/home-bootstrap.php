@@ -72,19 +72,21 @@ function pc_cut24(string $v):string{return preg_match('/^.{0,24}/us',$v,$m)?$m[0
 //  * If the email belongs to someone else's account whose email was never verified and which has a
 //    password (an email claimed at sign-up without proof), that password is removed and the account's
 //    login token replaced, so whoever set it loses access. The owner can set a new password.
-function pc_merge_account(PDO $db,int $currentId,string $email,?string $googleSub=null,?string $name=null,?string $avatar=null,bool $allowMerge=true): string {
+// $appleSub: Sign in with Apple's stable user ID (the iPhone app, inc/app.php), matched before the email like $googleSub.
+function pc_merge_account(PDO $db,int $currentId,string $email,?string $googleSub=null,?string $name=null,?string $avatar=null,bool $allowMerge=true,?string $appleSub=null): string {
  $email=strtolower(trim($email));$db->beginTransaction();
  try{
   $cur=null;if($currentId>0){$s=$db->prepare('SELECT * FROM users WHERE id=?');$s->execute([$currentId]);$cur=$s->fetch(PDO::FETCH_ASSOC)?:null;}
   $curIsGuest=$cur&&empty($cur['email'])&&empty($cur['google_sub'])&&empty($cur['password_hash'])&&empty($cur['is_bot']);
   $target=null;
   if($googleSub){$s=$db->prepare('SELECT * FROM users WHERE google_sub=?');$s->execute([$googleSub]);$target=$s->fetch(PDO::FETCH_ASSOC)?:null;}
+  if(!$target&&$appleSub){$s=$db->prepare('SELECT * FROM users WHERE apple_sub=?');$s->execute([$appleSub]);$target=$s->fetch(PDO::FETCH_ASSOC)?:null;}
   if(!$target){$s=$db->prepare('SELECT * FROM users WHERE email=?');$s->execute([$email]);$target=$s->fetch(PDO::FETCH_ASSOC)?:null;}
   if(!$target && !($cur&&empty($cur['email'])&&empty($cur['is_bot']))){
    // nobody has this email and the current account (if any) already has its own: start a new account
    $newToken=token();$display=trim((string)($name??''));if($display==='')$display=strstr($email,'@',true)?:'Player';
-   $s=$db->prepare('INSERT INTO users(token,display_name,email,email_verified_at,google_sub,avatar_url,onboarding_seen) VALUES(?,?,?,CURRENT_TIMESTAMP,?,?,0)');
-   $s->execute([$newToken,pc_cut24($display),$email,$googleSub,$avatar]);$db->commit();return $newToken;
+   $s=$db->prepare('INSERT INTO users(token,display_name,email,email_verified_at,google_sub,avatar_url,onboarding_seen,apple_sub) VALUES(?,?,?,CURRENT_TIMESTAMP,?,?,0,?)');
+   $s->execute([$newToken,pc_cut24($display),$email,$googleSub,$avatar,$appleSub]);$db->commit();return $newToken;
   }
   if($target && (int)$target['id']!==$currentId){
    $tid=(int)$target['id'];
@@ -106,6 +108,7 @@ function pc_merge_account(PDO $db,int $currentId,string $email,?string $googleSu
   $sql='UPDATE users SET email=?,email_verified_at=CURRENT_TIMESTAMP';
   $vals=[$email];
   if($googleSub){$sql.=',google_sub=?';$vals[]=$googleSub;}
+  if($appleSub){$sql.=',apple_sub=?';$vals[]=$appleSub;}
   if($avatar){$sql.=',avatar_url=?';$vals[]=$avatar;}
   if($display){$sql.=',display_name=?';$vals[]=$display;}
   $sql.=' WHERE id=?';$vals[]=$tid;$db->prepare($sql)->execute($vals);

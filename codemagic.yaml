@@ -1,0 +1,39 @@
+# Codemagic (codemagic.io) builds the PredictionComp iPhone app on a Mac and sends it to TestFlight. There's no Mac here, so
+# start a build by hand in Codemagic after updating app/ios on the server:
+#   cd app && ./sync-ios.sh   (then commit app/ios and push; the app loads predictioncomp.com itself)
+# Codemagic needs: this repo connected, and an App Store Connect API key added under Team integrations with the
+# name used below.
+workflows:
+  ios-testflight:
+    name: PredictionComp iPhone to TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    working_directory: app
+    integrations:
+      app_store_connect: Salsbury App Store Connect
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: uk.salsbury.predictioncomp
+      node: 22
+      xcode: 27.2   # iOS 27 SDK, required by Apple from April 2027 (latest is still Xcode 26 on Codemagic)
+    scripts:
+      - name: Install the plugins (the iPhone project's Swift packages point into node_modules)
+        script: npm ci
+      - name: Leave out the sign-in SDKs the app doesn't use (Facebook)
+        script: |
+          cd node_modules/@capgo/capacitor-social-login
+          CAPACITOR_PLATFORM_NAME=ios CAPACITOR_CONFIG="$(cat "$CM_BUILD_DIR/app/ios/App/App/capacitor.config.json")" node scripts/configure-dependencies.js
+      - name: Signing profiles
+        script: xcode-project use-profiles
+      - name: Build number (one more than the last Codemagic build)
+        script: cd ios/App && agvtool new-version -all "$BUILD_NUMBER"
+      - name: Build
+        script: xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        # Upload only; add new builds to TestFlight groups by hand in App Store Connect.
+        submit_to_testflight: false

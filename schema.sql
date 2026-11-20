@@ -35,7 +35,7 @@ CREATE TABLE predictions(id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, fixtu
 
 CREATE TABLE sync_meta(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated_at TEXT DEFAULT CURRENT_TIMESTAMP);
 
-CREATE TABLE users(id INTEGER PRIMARY KEY, token TEXT UNIQUE NOT NULL, display_name TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, supported_club TEXT, email TEXT, google_sub TEXT, email_verified_at TEXT, avatar_url TEXT, is_bot INTEGER NOT NULL DEFAULT 0, bot_grade INTEGER, first_played_at TEXT, play_alert_sent_at TEXT, prediction_reminders INTEGER NOT NULL DEFAULT 0, reminder_lead_hours INTEGER NOT NULL DEFAULT 24, password_hash TEXT, onboarding_seen INTEGER NOT NULL DEFAULT 1, guest_since TEXT);
+CREATE TABLE users(id INTEGER PRIMARY KEY, token TEXT UNIQUE NOT NULL, display_name TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, supported_club TEXT, email TEXT, google_sub TEXT, email_verified_at TEXT, avatar_url TEXT, is_bot INTEGER NOT NULL DEFAULT 0, bot_grade INTEGER, first_played_at TEXT, play_alert_sent_at TEXT, prediction_reminders INTEGER NOT NULL DEFAULT 0, reminder_lead_hours INTEGER NOT NULL DEFAULT 24, password_hash TEXT, onboarding_seen INTEGER NOT NULL DEFAULT 1, guest_since TEXT, apple_sub TEXT);
 
 CREATE INDEX auth_magic_links_email_created ON auth_magic_links(email,created_at);
 
@@ -55,3 +55,6 @@ CREATE INDEX IF NOT EXISTS league_members_user ON league_members(user_id,league_
 
 -- Stage 1 (2026-11-02): per-device logins, stored listed flag + triggers. See bin/migrations/2026-11-02-stage1.sql
 -- (that file is the source of truth; apply it to existing databases).
+
+-- Sign in with Apple (iPhone app, 2026-11-20)
+CREATE UNIQUE INDEX IF NOT EXISTS users_apple_sub_unique ON users(apple_sub) WHERE apple_sub IS NOT NULL;
