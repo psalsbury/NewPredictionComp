@@ -33,7 +33,7 @@
 .pc-remind b{display:block;font-size:16px;margin-bottom:4px}.pc-remind div{display:flex;gap:10px;margin-top:10px}
 .pc-remind button{flex:1;min-height:40px;border-radius:8px;border:1px solid #7fb8d8;background:transparent;color:inherit;font:600 15px/1 inherit}
 .pc-remind button.on{background:#7fe0b0;border-color:#7fe0b0;color:#06243a}
-.in-app .matchodds,.in-app .oddsprices,.in-app .oddskey,.in-app .oddsnote,.in-app .scoreoddspanel,.in-app .resultsodds,.in-app img[src*="club-logo.php"],.in-app img[src*="/club-badges/"],.in-app .remindernudge,.in-app #installApp,.in-app .installapp,.in-app [data-install],.in-app [data-install-app],.in-app a[href="/install"]{display:none!important}
+.in-app .matchodds,.in-app .oddsprices,.in-app .oddskey,.in-app .oddsnote,.in-app .scoreoddspanel,.in-app .resultsodds,.in-app #oddsTab,.in-app #oddsPanel,.in-app img[src*="club-logo.php"],.in-app img[src*="/club-badges/"],.in-app .remindernudge,.in-app #installApp,.in-app .installapp,.in-app [data-install],.in-app [data-install-app],.in-app a[href="/install"]{display:none!important}
 /* the website lays Google's invisible button over a drawn one; in the app the native buttons show instead */
 .in-app .googleloginwrap{overflow:visible;min-height:0;border-radius:0}.in-app .googlelogin{display:none}.in-app .googlehit{position:static;opacity:1;display:block}
 /* website-only pages (search-engine pages about clubs, fixtures and the Premier League table) stay out of the app */
@@ -231,8 +231,19 @@
     try { const r = await call('app_widget_token', {}); if (r && r.ok) await Widget.setToken({ token: r.token || '' }); } catch (e) { console.warn('widget', e); }
   }
 
+  // My Results: the "£1 a match" tab is built from betting odds, which the app hides (Pete chose to hide badges and
+  // odds, 2026-11-21), so in the app it showed an empty panel. Take the tab out and open Match history instead.
+  function dropOddsTab() {
+    const tab = document.getElementById('oddsTab'), panel = document.getElementById('oddsPanel');
+    if (!tab && !panel) return;
+    const wasOpen = !!tab && tab.getAttribute('aria-selected') === 'true';
+    if (tab) tab.remove();
+    if (panel) panel.remove();
+    if (wasOpen && typeof window.showResultsTab === 'function') window.showResultsTab('matches');
+  }
+
   const start = () => {
-    wrapApi(); netChanged(); renderSignIn(); offerReminders(); schedule(); registerPush(); linkWidget();
+    dropOddsTab(); wrapApi(); netChanged(); renderSignIn(); offerReminders(); schedule(); registerPush(); linkWidget();
     new MutationObserver(renderSignIn).observe(document.body, { childList: true, subtree: true });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
