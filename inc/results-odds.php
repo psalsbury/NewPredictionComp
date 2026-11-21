@@ -76,8 +76,8 @@ function renderPersonalOddsResults(array $s,string $label='This season'):string 
  // Match by match
  $rows=array_reverse(array_filter($s['matches'],fn($m)=>$m['result_net']!==null||$m['score_net']!==null));
  if($rows){
-  $cell=function($net,$price,$noPrice)use($signed,$cls){if($net===null)return '<td class="betflat"><small>'.$noPrice.'</small></td>';return '<td class="'.$cls($net).'">'.$signed($net).($price?'<small>@ '.number_format($price,2).'</small>':'<small>not priced</small>').'</td>';};
-  $html.='<details class="betmatches"'.(count($rows)<=12?' open':'').'><summary>Match by match ('.count($rows).')</summary><div class="bettablewrap"><table class="bettable"><thead><tr><th class="l">Match</th><th>Pick · Result</th><th>Result bet</th><th>Score bet</th><th>Total</th></tr></thead><tbody>';
+  $cell=function($net,$price,$noPrice)use($signed,$cls,$money){if($net===null)return '<td class="betflat"><small>'.$noPrice.'</small></td>';return '<td class="'.$cls($net).'">'.($net>0?$money($net+100):$signed($net)).($price?'<small>@ '.number_format($price,2).'</small>':'<small>not priced</small>').'</td>';};
+  $html.='<details class="betmatches"'.(count($rows)<=12?' open':'').'><summary>Match by match ('.count($rows).')</summary><div class="bettablewrap"><table class="bettable"><thead><tr><th class="l">Match</th><th>Pick · Result</th><th>Result bet</th><th>Score bet</th><th>Profit or loss</th></tr></thead><tbody>';
   foreach($rows as $m){
    $t=(int)($m['result_net']??0)+(int)($m['score_net']??0);
    $exact=(int)$m['home_score']===(int)$m['actual_home']&&(int)$m['away_score']===(int)$m['actual_away'];
@@ -86,7 +86,7 @@ function renderPersonalOddsResults(array $s,string $label='This season'):string 
   $html.='</tbody></table></div></details>';
  }
  $ex=[];if($s['excluded'])$ex[]=$s['excluded'].' without result odds';if($sc['excluded'])$ex[]=$sc['excluded'].' without exact-score prices';
- $html.='<p class="performancenote">Returns include the £1 stake, so a winning bet at 9.00 returns £9.00 (+£8.00) and a losing bet is −£1.00. An exact-score pick the bookmaker didn\'t price counts as a losing £1. Finished matches only'.($ex?'; of your finished predictions, '.implode(' and ',$ex).' are left out':'').'. Stored prices may differ from those available when you saved your pick. No real money is placed.</p></section>';
+ $html.='<p class="performancenote">A winning bet shows what it returns, including the £1 stake: at 9.00 that is £9.00, a profit of £8.00. A losing bet is −£1.00. Profit or loss is what the bets on that match returned minus the stakes. An exact-score pick the bookmaker didn\'t price counts as a losing £1. Finished matches only'.($ex?'; of your finished predictions, '.implode(' and ',$ex).' are left out':'').'. Stored prices may differ from those available when you saved your pick. No real money is placed.</p></section>';
  return $html;
 }
 
