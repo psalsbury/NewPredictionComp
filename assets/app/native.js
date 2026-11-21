@@ -11,7 +11,8 @@
 // * gives the Home Screen widget its data: a per-player widget token stored in the shared App Group (WidgetBridge).
 (() => {
   const C = window.Capacitor;
-  if (!C || !C.isNativePlatform || !C.isNativePlatform()) return;
+  if (!C || !C.isNativePlatform || !C.isNativePlatform() || window.__pcNative) return;
+  window.__pcNative = true; // the page may include this script twice (home page + player navigation)
   const P = C.Plugins || {}, Social = P.SocialLogin, LN = P.LocalNotifications, Push = P.PushNotifications,
     Haptics = P.Haptics, Share = P.Share, Browser = P.Browser, Widget = P.WidgetBridge;
   const WEB_CLIENT = '368920224445-2kda8mnmsccsg890ttt2iiranrm2j1t7.apps.googleusercontent.com';
@@ -29,7 +30,7 @@
 .pc-remind b{display:block;font-size:16px;margin-bottom:4px}.pc-remind div{display:flex;gap:10px;margin-top:10px}
 .pc-remind button{flex:1;min-height:40px;border-radius:8px;border:1px solid #7fb8d8;background:transparent;color:inherit;font:600 15px/1 inherit}
 .pc-remind button.on{background:#7fe0b0;border-color:#7fe0b0;color:#06243a}
-.in-app #installApp,.in-app .installapp,.in-app [data-install],.in-app [data-install-app],.in-app a[href="/install"]{display:none!important}
+.in-app .remindernudge,.in-app #installApp,.in-app .installapp,.in-app [data-install],.in-app [data-install-app],.in-app a[href="/install"]{display:none!important}
 /* the website lays Google's invisible button over a drawn one; in the app the native buttons show instead */
 .in-app .googleloginwrap{overflow:visible;min-height:0;border-radius:0}.in-app .googlelogin{display:none}.in-app .googlehit{position:static;opacity:1;display:block}
 /* website-only pages (search-engine pages about clubs, fixtures and the Premier League table) stay out of the app */
