@@ -24,6 +24,10 @@ workflows:
         script: |
           cd node_modules/@capgo/capacitor-social-login
           CAPACITOR_PLATFORM_NAME=ios CAPACITOR_CONFIG="$(cat "$CM_BUILD_DIR/app/ios/App/App/capacitor.config.json")" node scripts/configure-dependencies.js
+      - name: Add the Home Screen widget target (Xcode's project tools only exist on the Mac)
+        script: |
+          gem list -i xcodeproj >/dev/null 2>&1 || gem install xcodeproj --no-document
+          ruby src/ios/add_widget.rb
       - name: Signing profiles
         script: xcode-project use-profiles
       - name: Build number (one more than the last Codemagic build)

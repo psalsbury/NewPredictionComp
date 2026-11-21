@@ -24,7 +24,11 @@
 	},
 	"packageClassList": [
 		"AppPlugin",
+		"CAPBrowserPlugin",
+		"HapticsPlugin",
 		"LocalNotificationsPlugin",
+		"PushNotificationsPlugin",
+		"SharePlugin",
 		"SocialLoginPlugin"
 	]
 }

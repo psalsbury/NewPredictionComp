@@ -1,0 +1,6 @@
+[Unit]
+Description=PredictionComp iPhone app: matchweek results push notifications
+[Service]
+Type=oneshot
+User=www-data
+ExecStart=/usr/bin/php /opt/predictioncomp/bin/push_results.php

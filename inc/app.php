@@ -58,7 +58,8 @@ function pc_delete_account(PDO $db,int $uid):void{
    if($heir!==false)$db->prepare('UPDATE leagues SET owner_user_id=? WHERE id=?')->execute([(int)$heir,$lid]);
    else{$db->prepare('DELETE FROM league_members WHERE league_id=?')->execute([$lid]);$db->prepare('DELETE FROM leagues WHERE id=?')->execute([$lid]);}
   }
-  foreach(['predictions','league_members','user_sessions','player_awards','prediction_reminder_log'] as $table)
+  pc_app_tables($db);
+  foreach(['predictions','league_members','user_sessions','player_awards','prediction_reminder_log','push_tokens','push_log'] as $table)
    $db->prepare("DELETE FROM $table WHERE user_id=?")->execute([$uid]);
   $db->prepare('DELETE FROM auth_magic_links WHERE originating_user_id=?'.($email?' OR LOWER(email)=?':''))->execute($email?[$uid,strtolower((string)$email)]:[$uid]);
   $db->prepare('DELETE FROM users WHERE id=?')->execute([$uid]);
@@ -97,4 +98,68 @@ function pc_app_api(PDO $db,array $user,int $uid,string $api,array $in):void{
   }
   echo json_encode(['ok'=>true,'weeks'=>array_values($weeks)]);exit;
  }
+ // Push notifications: the app sends its APNs device token once the player allows notifications.
+ if($api==='app_push_register'){
+  if(!pc_csrf_ok($in))pc_auth_error(403,'Please refresh the page and try again.');
+  if($uid<1){http_response_code(401);echo json_encode(['ok'=>false,'error'=>'Sign in first.']);exit;}
+  $tok=preg_replace('/[^a-f0-9]/','',strtolower((string)($in['token']??'')));
+  if(strlen($tok)<32||strlen($tok)>200){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'Bad token']);exit;}
+  pc_app_tables($db);
+  $db->prepare("INSERT INTO push_tokens(token,user_id,platform,created_at,last_seen) VALUES(?,?,'ios',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+   ON CONFLICT(token) DO UPDATE SET user_id=excluded.user_id,last_seen=CURRENT_TIMESTAMP")->execute([$tok,$uid]);
+  echo json_encode(['ok'=>true]);exit;
+ }
+ // Home Screen widget: the app stores this token in the shared App Group; the widget fetches ?api=widget&wt=TOKEN.
+ if($api==='app_widget_token'){
+  if(!pc_csrf_ok($in))pc_auth_error(403,'Please refresh the page and try again.');
+  if($uid<1){echo json_encode(['ok'=>true,'token'=>'']);exit;}
+  $s=$db->prepare('SELECT widget_token FROM users WHERE id=?');$s->execute([$uid]);$wt=(string)($s->fetchColumn()?:'');
+  if($wt===''){$wt=bin2hex(random_bytes(20));$db->prepare('UPDATE users SET widget_token=? WHERE id=?')->execute([$wt,$uid]);}
+  echo json_encode(['ok'=>true,'token'=>$wt]);exit;
+ }
+ if($api==='widget'){
+  header('Cache-Control: no-store');
+  $wt=preg_replace('/[^a-f0-9]/','',(string)($_GET['wt']??''));$wid=0;
+  if(strlen($wt)===40){$s=$db->prepare('SELECT id FROM users WHERE widget_token=?');$s->execute([$wt]);$wid=(int)$s->fetchColumn();}
+  echo json_encode(['ok'=>true]+pc_app_summary($db,$wid));exit;
+ }
+}
+
+/** Tables for the app's push notifications (created on first use). users.widget_token is added by the setup migration. */
+function pc_app_tables(PDO $db):void{
+ static $done=false;if($done)return;$done=true;
+ $db->exec('CREATE TABLE IF NOT EXISTS push_tokens(token TEXT PRIMARY KEY,user_id INTEGER NOT NULL,platform TEXT NOT NULL,created_at TEXT,last_seen TEXT)');
+ $db->exec('CREATE INDEX IF NOT EXISTS push_tokens_user ON push_tokens(user_id)');
+ $db->exec('CREATE TABLE IF NOT EXISTS push_log(user_id INTEGER NOT NULL,kind TEXT NOT NULL,ref TEXT NOT NULL,sent_at TEXT DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(user_id,kind,ref))');
+}
+
+/**
+ * What the widget (and the results notification) shows for one player: the next matchweek with picks missing, and
+ * their place in their first league this season. $uid 0 = signed out: only the next deadline.
+ */
+function pc_app_summary(PDO $db,int $uid):array{
+ $out=['signed_in'=>$uid>0,'next'=>null,'league'=>null];
+ $q=$db->prepare("SELECT f.home,f.away,f.kickoff_utc,g.season,g.gameweek,(SELECT 1 FROM predictions p WHERE p.user_id=? AND p.fixture_id=f.id) done
+  FROM fixtures f JOIN fixture_gameweeks g ON g.fixture_id=f.id WHERE julianday(f.kickoff_utc)>julianday('now') AND julianday(f.kickoff_utc)<julianday('now','+21 days')
+  AND COALESCE(f.status,'NS') NOT IN ('PST','CANC','ABD') ORDER BY f.kickoff_utc");
+ $q->execute([$uid]);$weeks=[];
+ foreach($q->fetchAll(PDO::FETCH_ASSOC) as $f){
+  $k=$f['season'].'-'.$f['gameweek'];
+  $weeks[$k] ??= ['gameweek'=>(int)$f['gameweek'],'first_kickoff'=>gmdate('c',(int)strtotime($f['kickoff_utc'])),'first'=>$f['home'].' v '.$f['away'],'missing'=>0,'total'=>0,'next_missing'=>null];
+  $weeks[$k]['total']++;
+  if(!$f['done']){$weeks[$k]['missing']++;$weeks[$k]['next_missing'] ??= gmdate('c',(int)strtotime($f['kickoff_utc']));}
+ }
+ foreach($weeks as $w){ if($uid<1||$w['missing']>0){$out['next']=$w;break;} }
+ if(!$out['next']&&$weeks)$out['next']=reset($weeks);
+ if($uid>0){
+  $s=$db->prepare('SELECT l.id,l.name FROM league_members m JOIN leagues l ON l.id=m.league_id WHERE m.user_id=? ORDER BY m.joined_at,l.id LIMIT 1');$s->execute([$uid]);$l=$s->fetch(PDO::FETCH_ASSOC);
+  if($l){
+   if(!function_exists('friendLeagueProgress'))require_once PC_ROOT.'/league-progress.php';
+   $now=new DateTimeImmutable('now',new DateTimeZone('Europe/London'));$year=(int)$now->format('Y')-((int)$now->format('n')<7?1:0);
+   $start=new DateTimeImmutable($year.'-08-01 00:00:00',new DateTimeZone('Europe/London'));
+   $p=friendLeagueProgress($db,(int)$l['id'],$uid,$start,$start->modify('+10 months'));
+   if($p['you'])$out['league']=['name'=>$l['name'],'position'=>(int)$p['you']['rank'],'of'=>count($p['members']),'points'=>(int)$p['you']['pts'],'movement'=>(int)$p['you']['movement']];
+  }
+ }
+ return $out;
 }

@@ -3,11 +3,17 @@
 // * replaces Google's web sign-in (Google blocks that inside apps) with Google's own iPhone sign-in, and adds
 //   Sign in with Apple next to it (the App Store requires it beside Google). Both use the site's sign-in APIs.
 // * offers reminders on the phone: a local notification 24 hours and 2 hours before the first match you haven't
-//   predicted in each matchweek locks (/?api=app_reminders), rescheduled whenever the app is opened or left.
+//   predicted in each matchweek locks (/?api=app_reminders), rescheduled whenever the app is opened or left, and
+//   registers for push notifications: the server sends each player's matchweek results (bin/push_results.php).
+// * feels like an app (2026-11-21): a tap on a saved pick, links to other sites open in an in-app browser sheet,
+//   sharing uses the iPhone Share sheet, website-only footer links are hidden, and predictions are locked while the
+//   phone is offline (Pete: "only allow predictions when the app is online").
+// * gives the Home Screen widget its data: a per-player widget token stored in the shared App Group (WidgetBridge).
 (() => {
   const C = window.Capacitor;
   if (!C || !C.isNativePlatform || !C.isNativePlatform()) return;
-  const P = C.Plugins || {}, Social = P.SocialLogin, LN = P.LocalNotifications;
+  const P = C.Plugins || {}, Social = P.SocialLogin, LN = P.LocalNotifications, Push = P.PushNotifications,
+    Haptics = P.Haptics, Share = P.Share, Browser = P.Browser, Widget = P.WidgetBridge;
   const WEB_CLIENT = '368920224445-2kda8mnmsccsg890ttt2iiranrm2j1t7.apps.googleusercontent.com';
   const IOS_CLIENT = '368920224445-1cvoukharum8617el0cgqtt3tja1p68f.apps.googleusercontent.com'; // Google Cloud (PredictionComp project) > iOS client for uk.salsbury.predictioncomp
   const BUNDLE = 'uk.salsbury.predictioncomp';
@@ -23,9 +29,15 @@
 .pc-remind b{display:block;font-size:16px;margin-bottom:4px}.pc-remind div{display:flex;gap:10px;margin-top:10px}
 .pc-remind button{flex:1;min-height:40px;border-radius:8px;border:1px solid #7fb8d8;background:transparent;color:inherit;font:600 15px/1 inherit}
 .pc-remind button.on{background:#7fe0b0;border-color:#7fe0b0;color:#06243a}
-.in-app #installApp,.in-app .installapp,.in-app [data-install]{display:none!important}
+.in-app #installApp,.in-app .installapp,.in-app [data-install],.in-app [data-install-app],.in-app a[href="/install"]{display:none!important}
 /* the website lays Google's invisible button over a drawn one; in the app the native buttons show instead */
 .in-app .googleloginwrap{overflow:visible;min-height:0;border-radius:0}.in-app .googlelogin{display:none}.in-app .googlehit{position:static;opacity:1;display:block}
+/* website-only pages (search-engine pages about clubs, fixtures and the Premier League table) stay out of the app */
+.in-app .footerlinks a[href="/clubs"],.in-app .footerlinks a[href="/fixtures"],.in-app .footerlinks a[href="/table"]{display:none}
+.in-app body{-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}.in-app input,.in-app textarea{-webkit-user-select:text;user-select:text}
+/* offline: predictions locked until the connection is back */
+.pc-offline-bar{position:fixed;left:0;right:0;top:0;z-index:2147483000;padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;background:#b3261e;color:#fff;text-align:center;font:600 15px/1.35 -apple-system,system-ui,sans-serif}
+.pc-offline .fixture .score,.pc-offline .fixture input,.pc-offline .fixture button,.pc-offline .scorepickermodal{pointer-events:none!important;opacity:.45}
 </style>`);
 
   const G_ICON = '<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 7l7.5 5.8c4.4-4.1 6.8-10.1 6.8-17.3z"/><path fill="#FBBC05" d="M10.6 28.6A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.6l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l8-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.2 0-11.5-4.2-13.4-9.9l-8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>';
@@ -103,12 +115,12 @@
     if (!LN || pref() || !(window.PC && PC.signedIn !== false) || !document.querySelector('#predict, .fixture')) return;
     const box = document.createElement('section');
     box.className = 'pc-remind';
-    box.innerHTML = '<b>Reminders on this phone?</b>We\'ll send a notification 24 hours and 2 hours before the first match you haven\'t predicted in each matchweek. Nothing else.<div><button type="button" class="on">Turn on</button><button type="button">No thanks</button></div>';
+    box.innerHTML = '<b>Notifications on this phone?</b>A reminder 24 hours and 2 hours before the first match you haven\'t predicted in each matchweek, and your points and league place when each matchweek\'s results are in. Nothing else.<div><button type="button" class="on">Turn on</button><button type="button">No thanks</button></div>';
     const [yes, no] = box.querySelectorAll('button');
     yes.onclick = async () => {
       let ok = false;
       try { ok = (await LN.requestPermissions()).display === 'granted'; } catch (e) {}
-      setPref(ok ? 'on' : 'off'); box.remove(); if (ok) schedule();
+      setPref(ok ? 'on' : 'off'); box.remove(); if (ok) { schedule(); registerPush(); }
       else alert('Notifications are off for PredictionComp. You can switch them on in the iPhone Settings app.');
     };
     no.onclick = () => { setPref('off'); box.remove(); };
@@ -116,7 +128,81 @@
     main.insertBefore(box, main.firstChild);
   }
 
-  const start = () => { renderSignIn(); offerReminders(); schedule(); new MutationObserver(renderSignIn).observe(document.body, { childList: true, subtree: true }); };
+  // ---------- Push notifications (matchweek results, sent by the server) ----------
+  let pushListening = false;
+  async function registerPush() {
+    if (!Push || pref() !== 'on') return;
+    try {
+      if (!pushListening) {
+        pushListening = true;
+        await Push.addListener('registration', t => { call('app_push_register', { token: t.value }).catch(() => {}); });
+        await Push.addListener('registrationError', e => console.warn('push', e));
+        await Push.addListener('pushNotificationActionPerformed', () => { if (!/^\/?$/.test(location.pathname)) location.href = '/#predict'; });
+      }
+      if ((await Push.checkPermissions()).receive !== 'granted' && (await Push.requestPermissions()).receive !== 'granted') return;
+      await Push.register(); // a fresh token each launch: tokens can change
+    } catch (e) { console.warn('push', e); }
+  }
+
+  // ---------- Feels like an app ----------
+  const tap = (style = 'LIGHT') => { try { Haptics && Haptics.impact({ style }); } catch (e) {} };
+  const offline = () => !navigator.onLine;
+  function wrapApi() {
+    if (typeof window.api !== 'function' || window.api.__native) return;
+    const orig = window.api;
+    const wrapped = async (a, d) => {
+      if (a === 'save' && offline()) throw Error('You\'re offline. Predictions can only be made when you\'re online.');
+      const r = await orig(a, d);
+      if (a === 'save') tap('LIGHT');
+      return r;
+    };
+    wrapped.__native = true;
+    window.api = wrapped;
+  }
+  // Links to other sites open in an in-app browser sheet; the app itself stays on predictioncomp.com.
+  const external = href => { try { const u = new URL(href, location.href); return /^https?:$/.test(u.protocol) && !/(^|\.)predictioncomp\.com$/.test(u.hostname) ? u.href : null; } catch (e) { return null; } };
+  document.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('a[href]');
+    const url = a && external(a.getAttribute('href'));
+    if (!url || !Browser) return;
+    e.preventDefault();
+    if (/^https:\/\/(wa\.me|api\.whatsapp\.com)\//.test(url) && Share) { const t = new URL(url).searchParams.get('text') || ''; Share.share({ text: t, dialogTitle: 'Share' }).catch(() => {}); return; }
+    Browser.open({ url, presentationStyle: 'popover' }).catch(() => { location.href = url; });
+  }, true);
+  const winOpen = window.open;
+  window.open = (url, ...rest) => { const ext = external(url || ''); if (ext && Browser) { Browser.open({ url: ext }).catch(() => {}); return null; } return winOpen.call(window, url, ...rest); };
+  // Sharing: the iPhone Share sheet (it has Copy too) instead of the website's copy and share buttons.
+  if (Share) {
+    const nativeShare = async data => {
+      const d = data || {}, text = [d.text, d.url].filter(Boolean).join(' ');
+      try { await Share.share({ title: d.title || 'PredictionComp', text: d.text || '', url: d.url || undefined, dialogTitle: 'Share' }); }
+      catch (e) { if (!/cancel/i.test((e && e.message) || '')) throw e; }
+
+    };
+    try { Object.defineProperty(navigator, 'share', { configurable: true, value: data => nativeShare(data && data.files ? { text: data.text, title: data.title, url: data.url } : data) }); } catch (e) {}
+    try { Object.defineProperty(navigator, 'canShare', { configurable: true, value: data => !(data && data.files) }); } catch (e) {}
+    if (typeof window.copyText === 'function') window.copyText = async (text, button) => { tap(); await nativeShare({ text }); return true; };
+  }
+  // Offline: lock predictions and say why, until the connection is back.
+  let bar = null;
+  function netChanged() {
+    const off = offline();
+    document.documentElement.classList.toggle('pc-offline', off);
+    if (off && !bar) { bar = document.createElement('div'); bar.className = 'pc-offline-bar'; bar.setAttribute('role', 'status'); bar.textContent = 'You\'re offline. Predictions are locked until you\'re back online.'; document.body.appendChild(bar); }
+    if (!off && bar) { bar.remove(); bar = null; }
+  }
+  addEventListener('online', netChanged); addEventListener('offline', netChanged);
+
+  // ---------- Home Screen widget ----------
+  async function linkWidget() {
+    if (!Widget) return;
+    try { const r = await call('app_widget_token', {}); if (r && r.ok) await Widget.setToken({ token: r.token || '' }); } catch (e) { console.warn('widget', e); }
+  }
+
+  const start = () => {
+    wrapApi(); netChanged(); renderSignIn(); offerReminders(); schedule(); registerPush(); linkWidget();
+    new MutationObserver(renderSignIn).observe(document.body, { childList: true, subtree: true });
+  };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
-  document.addEventListener('visibilitychange', () => { if (document.hidden) schedule(); }); // picks saved since: drop reminders that no longer apply
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { schedule(); if (Widget) Widget.refresh().catch(() => {}); } }); // picks saved since: update reminders and the widget
 })();

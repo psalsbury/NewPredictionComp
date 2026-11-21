@@ -35,7 +35,7 @@ CREATE TABLE predictions(id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, fixtu
 
 CREATE TABLE sync_meta(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated_at TEXT DEFAULT CURRENT_TIMESTAMP);
 
-CREATE TABLE users(id INTEGER PRIMARY KEY, token TEXT UNIQUE NOT NULL, display_name TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, supported_club TEXT, email TEXT, google_sub TEXT, email_verified_at TEXT, avatar_url TEXT, is_bot INTEGER NOT NULL DEFAULT 0, bot_grade INTEGER, first_played_at TEXT, play_alert_sent_at TEXT, prediction_reminders INTEGER NOT NULL DEFAULT 0, reminder_lead_hours INTEGER NOT NULL DEFAULT 24, password_hash TEXT, onboarding_seen INTEGER NOT NULL DEFAULT 1, guest_since TEXT, apple_sub TEXT);
+CREATE TABLE users(id INTEGER PRIMARY KEY, token TEXT UNIQUE NOT NULL, display_name TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, supported_club TEXT, email TEXT, google_sub TEXT, email_verified_at TEXT, avatar_url TEXT, is_bot INTEGER NOT NULL DEFAULT 0, bot_grade INTEGER, first_played_at TEXT, play_alert_sent_at TEXT, prediction_reminders INTEGER NOT NULL DEFAULT 0, reminder_lead_hours INTEGER NOT NULL DEFAULT 24, password_hash TEXT, onboarding_seen INTEGER NOT NULL DEFAULT 1, guest_since TEXT, apple_sub TEXT, widget_token TEXT);
 
 CREATE INDEX auth_magic_links_email_created ON auth_magic_links(email,created_at);
 
@@ -58,3 +58,10 @@ CREATE INDEX IF NOT EXISTS league_members_user ON league_members(user_id,league_
 
 -- Sign in with Apple (iPhone app, 2026-11-20)
 CREATE UNIQUE INDEX IF NOT EXISTS users_apple_sub_unique ON users(apple_sub) WHERE apple_sub IS NOT NULL;
+
+-- iPhone app (2026-11-21): push notifications and the Home Screen widget
+CREATE TABLE IF NOT EXISTS push_tokens(token TEXT PRIMARY KEY,user_id INTEGER NOT NULL,platform TEXT NOT NULL,created_at TEXT,last_seen TEXT);
+CREATE INDEX IF NOT EXISTS push_tokens_user ON push_tokens(user_id);
+CREATE TABLE IF NOT EXISTS push_log(user_id INTEGER NOT NULL,kind TEXT NOT NULL,ref TEXT NOT NULL,sent_at TEXT DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(user_id,kind,ref));
+-- users.widget_token TEXT (ALTER TABLE users ADD COLUMN widget_token TEXT) with a unique index where not null
+CREATE UNIQUE INDEX IF NOT EXISTS users_widget_token_unique ON users(widget_token) WHERE widget_token IS NOT NULL;
