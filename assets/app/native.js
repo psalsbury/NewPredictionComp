@@ -30,7 +30,7 @@
 .pc-remind b{display:block;font-size:16px;margin-bottom:4px}.pc-remind div{display:flex;gap:10px;margin-top:10px}
 .pc-remind button{flex:1;min-height:40px;border-radius:8px;border:1px solid #7fb8d8;background:transparent;color:inherit;font:600 15px/1 inherit}
 .pc-remind button.on{background:#7fe0b0;border-color:#7fe0b0;color:#06243a}
-.in-app .remindernudge,.in-app #installApp,.in-app .installapp,.in-app [data-install],.in-app [data-install-app],.in-app a[href="/install"]{display:none!important}
+.in-app .matchodds,.in-app .oddsprices,.in-app .oddskey,.in-app .oddsnote,.in-app .scoreoddspanel,.in-app .resultsodds,.in-app img[src*="club-logo.php"],.in-app img[src*="/club-badges/"],.in-app .remindernudge,.in-app #installApp,.in-app .installapp,.in-app [data-install],.in-app [data-install-app],.in-app a[href="/install"]{display:none!important}
 /* the website lays Google's invisible button over a drawn one; in the app the native buttons show instead */
 .in-app .googleloginwrap{overflow:visible;min-height:0;border-radius:0}.in-app .googlelogin{display:none}.in-app .googlehit{position:static;opacity:1;display:block}
 /* website-only pages (search-engine pages about clubs, fixtures and the Premier League table) stay out of the app */
