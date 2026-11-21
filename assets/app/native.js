@@ -18,6 +18,9 @@
   const WEB_CLIENT = '368920224445-2kda8mnmsccsg890ttt2iiranrm2j1t7.apps.googleusercontent.com';
   const IOS_CLIENT = '368920224445-1cvoukharum8617el0cgqtt3tja1p68f.apps.googleusercontent.com'; // Google Cloud (PredictionComp project) > iOS client for uk.salsbury.predictioncomp
   const BUNDLE = 'uk.salsbury.predictioncomp';
+  // Android (2026-11-21): Google sign-in through Android's own Credential Manager, no Sign in with Apple, no push yet
+  // (that needs Firebase; reminders still come as local notifications), and the back gesture handled below.
+  const ANDROID = !!(C.getPlatform && C.getPlatform() === 'android');
   document.documentElement.classList.add('in-app');
   window.pcGoogleRequested = true; // home.js: never load Google's web sign-in script in the app
 
@@ -50,7 +53,7 @@
   const signedIn = () => { location.href = (window.PC && PC.afterSignIn) || '/?signed_in=1#predict'; };
   let gInit = null, aInit = null;
   async function google() {
-    await (gInit ||= Social.initialize({ google: { iOSClientId: IOS_CLIENT, iOSServerClientId: WEB_CLIENT } }).catch(e => { gInit = null; throw e; }));
+    await (gInit ||= Social.initialize({ google: ANDROID ? { webClientId: WEB_CLIENT } : { iOSClientId: IOS_CLIENT, iOSServerClientId: WEB_CLIENT } }).catch(e => { gInit = null; throw e; }));
     let token;
     try { token = (await Social.login({ provider: 'google', options: {} })).result.idToken; }
     catch (e) { if (cancelled(e)) return; throw Error(`Google sign-in didn't work (${(e && e.message) || 'unknown error'}). Please try again.`); }
@@ -76,8 +79,8 @@
       if (el.dataset.native) return;
       el.dataset.native = el.dataset.rendered = '1';
       const msg = document.getElementById('authMessage') || el.parentElement.querySelector('.authmessage');
-      el.innerHTML = `<div class="pc-native"><button type="button" class="a">${A_ICON}Sign in with Apple</button><button type="button" class="g">${G_ICON}Continue with Google</button></div>`;
-      el.querySelector('.a').onclick = run(apple, msg);
+      el.innerHTML = `<div class="pc-native">${ANDROID ? '' : `<button type="button" class="a">${A_ICON}Sign in with Apple</button>`}<button type="button" class="g">${G_ICON}Continue with Google</button></div>`;
+      if (!ANDROID) el.querySelector('.a').onclick = run(apple, msg);
       el.querySelector('.g').onclick = run(google, msg);
     });
     // "Link Google account" in the profile: the same native sign-in links Google to the signed-in account.
@@ -116,7 +119,7 @@
     if (!LN || pref() || !(window.PC && PC.signedIn !== false) || !document.querySelector('#predict, .fixture')) return;
     const box = document.createElement('section');
     box.className = 'pc-remind';
-    box.innerHTML = '<b>Notifications on this phone?</b>A reminder 24 hours and 2 hours before the first match you haven\'t predicted in each matchweek, and your points and league place when each matchweek\'s results are in. Nothing else.<div><button type="button" class="on">Turn on</button><button type="button">No thanks</button></div>';
+    box.innerHTML = '<b>Notifications on this phone?</b>A reminder 24 hours and 2 hours before the first match you haven\'t predicted in each matchweek' + (ANDROID ? '' : ', and your points and league place when each matchweek\'s results are in') + '. Nothing else.<div><button type="button" class="on">Turn on</button><button type="button">No thanks</button></div>';
     const [yes, no] = box.querySelectorAll('button');
     yes.onclick = async () => {
       let ok = false;
@@ -132,7 +135,7 @@
   // ---------- Push notifications (matchweek results, sent by the server) ----------
   let pushListening = false;
   async function registerPush() {
-    if (!Push || pref() !== 'on') return;
+    if (!Push || ANDROID || pref() !== 'on') return; // Android push needs Firebase (google-services.json): not set up yet
     try {
       if (!pushListening) {
         pushListening = true;
@@ -193,6 +196,34 @@
     if (!off && bar) { bar.remove(); bar = null; }
   }
   addEventListener('online', netChanged); addEventListener('offline', netChanged);
+
+  // ---------- Android back gesture (Pete, 2026-11-20: same rule as the games) ----------
+  // A dialog open: close it. Somewhere to go back to: go back, as the site's own back links do. On the first page:
+  // ask "Leave PredictionComp?" before closing the app.
+  const AppP = P.App;
+  let leaveBox = null;
+  function askLeave() {
+    leaveBox = document.createElement('div');
+    leaveBox.setAttribute('role', 'dialog'); leaveBox.setAttribute('aria-modal', 'true');
+    leaveBox.style.cssText = 'position:fixed;inset:0;z-index:2147483001;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.6);font:600 18px/1.35 system-ui,sans-serif';
+    leaveBox.innerHTML = '<div style="background:#12324a;color:#fff;border:2px solid #2a5b7c;border-radius:16px;padding:22px 20px 18px;max-width:320px;width:100%;text-align:center"><div style="font-size:21px;font-weight:800;margin-bottom:18px">Leave PredictionComp?</div><div style="display:flex;gap:12px">'
+      + '<button type="button" data-v="stay" style="flex:1;font:inherit;font-weight:800;padding:12px;border-radius:10px;border:0;background:#7fe0b0;color:#06243a">Stay</button>'
+      + '<button type="button" data-v="leave" style="flex:1;font:inherit;font-weight:800;padding:12px;border-radius:10px;border:2px solid #7fb8d8;background:transparent;color:#fff">Leave</button></div></div>';
+    leaveBox.addEventListener('click', e => {
+      const b = e.target.closest('button');
+      if (b && b.dataset.v === 'leave') { leaveBox.remove(); leaveBox = null; AppP.exitApp(); }
+      else if (b || e.target === leaveBox) { leaveBox.remove(); leaveBox = null; }
+    });
+    document.body.appendChild(leaveBox);
+  }
+  if (ANDROID && AppP && AppP.addListener) {
+    AppP.addListener('backButton', ({ canGoBack }) => {
+      if (leaveBox) { leaveBox.remove(); leaveBox = null; return; }
+      const open = [...document.querySelectorAll('dialog[open]')].pop();
+      if (open) { open.close(); return; }
+      if (canGoBack) history.back(); else askLeave();
+    });
+  }
 
   // ---------- Home Screen widget ----------
   async function linkWidget() {

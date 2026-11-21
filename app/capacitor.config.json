@@ -13,8 +13,16 @@
   },
   "plugins": {
     "SocialLogin": {
-      "providers": { "google": true, "apple": true, "facebook": false, "twitter": false }
+      "providers": {
+        "google": true,
+        "apple": true,
+        "facebook": false,
+        "twitter": false
+      }
     },
     "LocalNotifications": {}
+  },
+  "android": {
+    "appendUserAgent": "PredictionCompApp/1.0"
   }
 }

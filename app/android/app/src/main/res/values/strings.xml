@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PredictionComp</string>
+    <string name="title_activity_main">PredictionComp</string>
+    <string name="package_name">uk.salsbury.predictioncomp</string>
+    <string name="custom_url_scheme">uk.salsbury.predictioncomp</string>
+</resources>

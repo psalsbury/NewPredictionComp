@@ -4,6 +4,7 @@
   "private": true,
   "description": "PredictionComp iPhone app (Capacitor shell that loads predictioncomp.com)",
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
     "@capacitor/app": "^8.1.2",
     "@capacitor/browser": "^8.0.5",
     "@capacitor/cli": "^8.5.3",
