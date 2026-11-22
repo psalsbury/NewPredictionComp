@@ -23,6 +23,14 @@
   const ANDROID = !!(C.getPlatform && C.getPlatform() === 'android');
   document.documentElement.classList.add('in-app');
   window.pcGoogleRequested = true; // home.js: never load Google's web sign-in script in the app
+  // the footer's About / Privacy Policy / Contact links go in the Football menu instead
+  const addInfoLinks = () => document.querySelectorAll('.footballitems').forEach(m => {
+    if (m.querySelector('.pc-info')) return;
+    for (const [h, t] of [['/about', 'About'], ['/privacy', 'Privacy Policy'], ['/contact', 'Contact']]) {
+      const a = document.createElement('a'); a.href = h; a.textContent = t; a.className = 'pc-info'; m.append(a);
+    }
+  });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addInfoLinks); else addInfoLinks();
 
   document.head.insertAdjacentHTML('beforeend', `<style>
 .pc-native{display:flex;flex-direction:column;gap:10px;width:100%;max-width:400px}
@@ -38,6 +46,8 @@
 /* £1 a match (My Results) stays in the app (Pete, 2026-11-21): show its panel despite the odds rule above */
 .in-app #oddsPanel .resultsodds{display:block!important}
 .in-app .googleloginwrap{overflow:visible;min-height:0;border-radius:0}.in-app .googlelogin{display:none}.in-app .googlehit{position:static;opacity:1;display:block}
+/* no website footer in the app (Pete, 2026-11-22); About, Privacy Policy and Contact are in the Football menu */
+.in-app footer{display:none!important}
 /* website-only pages (search-engine pages about clubs, fixtures and the Premier League table) stay out of the app */
 .in-app .footerlinks a[href="/clubs"],.in-app .footerlinks a[href="/fixtures"],.in-app .footerlinks a[href="/table"]{display:none}
 .in-app body{-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}.in-app input,.in-app textarea{-webkit-user-select:text;user-select:text}

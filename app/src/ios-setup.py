@@ -16,7 +16,7 @@ pl['ITSAppUsesNonExemptEncryption'] = False  # only HTTPS, so no export-complian
 # Google's own ad network ID (AdMob asks for it; other networks' IDs only matter with mediation, which isn't used).
 if admob != 'none': pl['SKAdNetworkItems'] = [{'SKAdNetworkIdentifier': 'cstr6suwn9.skadnetwork'}]
 pl['UISupportedInterfaceOrientations'] = ['UIInterfaceOrientationPortrait']
-pl.pop('UISupportedInterfaceOrientations~ipad', None)
+pl['UISupportedInterfaceOrientations~ipad'] = ['UIInterfaceOrientationPortrait', 'UIInterfaceOrientationPortraitUpsideDown']  # iPad: upright either way up
 pl['UIRequiresFullScreen'] = True
 pl['UIStatusBarStyle'] = 'UIStatusBarStyleLightContent'
 types = [t for t in pl.get('CFBundleURLTypes', []) if t.get('CFBundleURLName') != 'google-sign-in']
@@ -31,7 +31,7 @@ plistlib.dump({'com.apple.developer.applesignin': ['Default']}, open('ios/App/Ap
 
 X = 'ios/App/App.xcodeproj/project.pbxproj'
 s = open(X).read()
-s = s.replace('TARGETED_DEVICE_FAMILY = "1,2";', 'TARGETED_DEVICE_FAMILY = 1;')  # iPhone only (iPads run it as an iPhone app)
+s = s.replace('TARGETED_DEVICE_FAMILY = 1;', 'TARGETED_DEVICE_FAMILY = "1,2";')  # iPhone and iPad (full screen on an iPad; Pete, 2026-11-22)
 s = re.sub(r'PRODUCT_BUNDLE_IDENTIFIER = [^;]+;', f'PRODUCT_BUNDLE_IDENTIFIER = {bundle};', s)
 s = re.sub(r'MARKETING_VERSION = [^;]+;', f'MARKETING_VERSION = {version};', s)
 if 'CODE_SIGN_ENTITLEMENTS' not in s:
