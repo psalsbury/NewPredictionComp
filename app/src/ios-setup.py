@@ -16,8 +16,8 @@ pl['ITSAppUsesNonExemptEncryption'] = False  # only HTTPS, so no export-complian
 # Google's own ad network ID (AdMob asks for it; other networks' IDs only matter with mediation, which isn't used).
 if admob != 'none': pl['SKAdNetworkItems'] = [{'SKAdNetworkIdentifier': 'cstr6suwn9.skadnetwork'}]
 pl['UISupportedInterfaceOrientations'] = ['UIInterfaceOrientationPortrait']
-pl['UISupportedInterfaceOrientations~ipad'] = ['UIInterfaceOrientationPortrait', 'UIInterfaceOrientationPortraitUpsideDown']  # iPad: upright either way up
-pl['UIRequiresFullScreen'] = True
+pl['UISupportedInterfaceOrientations~ipad'] = ['UIInterfaceOrientationPortrait', 'UIInterfaceOrientationPortraitUpsideDown', 'UIInterfaceOrientationLandscapeLeft', 'UIInterfaceOrientationLandscapeRight']  # iPad: any way round (needed without UIRequiresFullScreen)
+pl.pop('UIRequiresFullScreen', None)  # resizable: fills an iPhone Duo and works in iPad windows (Pete, 2026-11-22)
 pl['UIStatusBarStyle'] = 'UIStatusBarStyleLightContent'
 types = [t for t in pl.get('CFBundleURLTypes', []) if t.get('CFBundleURLName') != 'google-sign-in']
 if gclient:  # Google's iOS sign-in needs the reversed client ID as a URL scheme
