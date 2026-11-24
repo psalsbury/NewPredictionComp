@@ -77,3 +77,9 @@ a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid #8c
 
 /* Keep every Football option equally readable across desktop and mobile. */
 .footballmenu.footballmenu .footballitems a,.footballmenu .footballitems a:visited,.footballmenu .footballitems a:hover,.footballmenu .footballitems a:focus-visible,.playernav .footballmenu .footballitems a{color:var(--text,#eef5f8);opacity:1}
+
+/* Persistent header (2026-11-24): the top bar stays in view while the page scrolls. */
+html,body{overflow-x:hidden;overflow-x:clip}
+header.siteheader{position:sticky;top:0;z-index:90}
+html{scroll-padding-top:72px}
+@media(max-width:720px){html{scroll-padding-top:62px}}
