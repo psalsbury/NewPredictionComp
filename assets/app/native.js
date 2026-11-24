@@ -21,6 +21,11 @@
   // Android (2026-11-21): Google sign-in through Android's own Credential Manager, no Sign in with Apple, no push yet
   // (that needs Firebase; reminders still come as local notifications), and the back gesture handled below.
   const ANDROID = !!(C.getPlatform && C.getPlatform() === 'android');
+  // Which device the reminder card talks about (Pete, 2026-11-24: it said "this phone" on an iPad too).
+  // iPads report a Mac user agent, so a touch screen on "Macintosh" means an iPad; Android tablets leave out "Mobile".
+  const UA = navigator.userAgent || '';
+  const DEVICE = /iPad/.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1) ? 'iPad'
+    : ANDROID && !/Mobile/.test(UA) ? 'tablet' : 'phone';
   document.documentElement.classList.add('in-app');
   window.pcGoogleRequested = true; // home.js: never load Google's web sign-in script in the app
   // the footer's About / Privacy Policy / Contact links go in the Football menu instead
@@ -41,7 +46,7 @@
 .pc-remind b{display:block;font-size:16px;margin-bottom:4px}.pc-remind div{display:flex;gap:10px;margin-top:10px}
 .pc-remind button{flex:1;min-height:40px;border-radius:8px;border:1px solid #7fb8d8;background:transparent;color:inherit;font:600 15px/1 inherit}
 .pc-remind button.on{background:#7fe0b0;border-color:#7fe0b0;color:#06243a}
-.in-app .matchodds,.in-app .oddsprices,.in-app .oddskey,.in-app .oddsnote,.in-app .scoreoddspanel,.in-app .resultsodds,.in-app img[src*="club-logo.php"],.in-app img[src*="/club-badges/"],.in-app .remindernudge,.in-app #installApp,.in-app .installapp,.in-app [data-install],.in-app [data-install-app],.in-app a[href="/install"]{display:none!important}
+.in-app .matchodds,.in-app .oddsprices,.in-app .oddskey,.in-app .oddsnote,.in-app .scoreoddspanel,.in-app .resultsodds,.in-app .remindernudge,.in-app #installApp,.in-app .installapp,.in-app [data-install],.in-app [data-install-app],.in-app a[href="/install"]{display:none!important}
 /* the website lays Google's invisible button over a drawn one; in the app the native buttons show instead */
 /* £1 a match (My Results) stays in the app (Pete, 2026-11-21): show its panel despite the odds rule above */
 .in-app #oddsPanel .resultsodds{display:block!important}
@@ -103,7 +108,7 @@
     });
   }
 
-  // ---------- Reminders on this phone ----------
+  // ---------- Reminders on this device ----------
   const KEY = 'pc-app-reminders'; // 'on' or 'off' once the player has chosen
   const pref = () => { try { return localStorage.getItem(KEY); } catch (e) { return null; } };
   const setPref = v => { try { localStorage.setItem(KEY, v); } catch (e) {} };
@@ -131,13 +136,13 @@
     if (!LN || pref() || !(window.PC && PC.signedIn !== false) || !document.querySelector('#predict, .fixture')) return;
     const box = document.createElement('section');
     box.className = 'pc-remind';
-    box.innerHTML = '<b>Notifications on this phone?</b>A reminder 24 hours and 2 hours before the first match you haven\'t predicted in each matchweek' + (ANDROID ? '' : ', and your points and league place when each matchweek\'s results are in') + '. Nothing else.<div><button type="button" class="on">Turn on</button><button type="button">No thanks</button></div>';
+    box.innerHTML = '<b>Notifications on this ' + DEVICE + '?</b>A reminder 24 hours and 2 hours before the first match you haven\'t predicted in each matchweek' + (ANDROID ? '' : ', and your points and league place when each matchweek\'s results are in') + '. Nothing else.<div><button type="button" class="on">Turn on</button><button type="button">No thanks</button></div>';
     const [yes, no] = box.querySelectorAll('button');
     yes.onclick = async () => {
       let ok = false;
       try { ok = (await LN.requestPermissions()).display === 'granted'; } catch (e) {}
       setPref(ok ? 'on' : 'off'); box.remove(); if (ok) { schedule(); registerPush(); }
-      else alert('Notifications are off for PredictionComp. You can switch them on in your phone\'s Settings app' + (ANDROID ? ' (Apps > PredictionComp > Notifications).' : '.'));
+      else alert('Notifications are off for PredictionComp. You can switch them on in your ' + DEVICE + '\'s Settings app' + (ANDROID ? ' (Apps > PredictionComp > Notifications).' : '.'));
     };
     no.onclick = () => { setPref('off'); box.remove(); };
     const main = document.querySelector('main') || document.body;

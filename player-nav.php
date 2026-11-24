@@ -2,7 +2,7 @@
 function playerNavigation(bool $home=false):void {
  $icons=['predictions'=>'<path d="M6 3v3m12-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"/><path d="m8 15 2 2 5-5"/>','results'=>'<path d="M5 20V10m7 10V4m7 16v-7"/>','leagues'=>'<path d="M8 4h8v5a4 4 0 0 1-8 0V4Zm4 9v6m-4 1h8M8 6H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4"/>','account'=>'<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>'];
  // iPhone app extras (assets/app/native.js does nothing outside the app); every player page has this nav.
- echo '<script src="/assets/app/native.js?v=15" defer></script>';
+ echo '<script src="/assets/app/native.js?v=16" defer></script>';
  echo '<nav class="playernav" aria-label="Player navigation">';
  foreach(['predictions'=>'Predict','leagues'=>'Leagues','results'=>'Results'] as $key=>$label){
  $url=['predictions'=>'/#predict','results'=>'/my-results','leagues'=>'/leagues','account'=>'/account'][$key];
